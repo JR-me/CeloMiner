@@ -265,7 +265,7 @@ contract MinerBadge {
         require(_ownerOf[tokenId] != address(0), "Token does not exist");
         Tier t = tierOf[tokenId];
         string memory tierName  = t == Tier.Legendary ? "Legendary" : t == Tier.Rare ? "Rare" : "Common";
-        string memory tierEmoji = t == Tier.Legendary ? unicode"\u2B50" : t == Tier.Rare ? unicode"\U0001F48E" : unicode"\u26CF";
+        string memory tierEmoji = t == Tier.Legendary ? unicode"\u2B50" : t == Tier.Rare ? unicode"💎" : unicode"\u26CF";
 
         // Build raw SVG bytes then base64-encode the whole thing (L-02).
         // Single-quoted SVG attributes are valid XML and avoid any need to
