@@ -751,9 +751,9 @@ const CHAINS = {
     name:          "Celo",
     label:         "CELO MAINNET",
     explorerTx:    "https://celoscan.io/tx/",
-    minerAddress:  "0x1f22f19a18038D9FB2b51BFb0878227f1926233f", // <-- CeloMiner on Celo
-    cballAddress:  "0xfa83D5f40425Cdb7139855b3641869D003b0E8ab", // <-- cBALL on Celo
-    badgeAddress:  "0xc516406230FF9AdD7138808Df3948636aeAaC44c", // <-- MinerBadge on Celo
+    minerAddress:  "0x0000000000000000000000000000000000000001", // <-- CeloMiner on Celo
+    cballAddress:  "0x0000000000000000000000000000000000000002", // <-- cBALL on Celo
+    badgeAddress:  "0x0000000000000000000000000000000000000003", // <-- MinerBadge on Celo
   },
   // ── Base Mainnet ─────────────────────────────────────────────────────────
   8453n: {
@@ -893,9 +893,15 @@ async function connectWallet() {
 
     const network = await provider.getNetwork();
     const chainId = network.chainId; // BigInt in ethers v6
+    console.log("Connected chainId:", chainId, typeof chainId, "— CHAINS keys:", Object.keys(CHAINS));
 
-    // Look up chain config — show error if the chain is not supported.
-    activeChain = CHAINS[chainId] || null;
+    // Look up chain config — normalise to BigInt first (ethers v6 returns BigInt,
+    // but some injected providers return a Number or String instead).
+    // Try BigInt key first, then Number key, then String key as fallbacks.
+    activeChain = CHAINS[chainId]
+      || CHAINS[BigInt(chainId)]
+      || CHAINS[Number(chainId)]
+      || null;
     if (!activeChain) {
       addLog("error", `Unsupported network (chainId ${chainId}). ` +
         `Switch to Celo (42220), Base (8453), or Ethereum (1).`);
@@ -1113,7 +1119,10 @@ async function doOnboard() {
 // only badge claiming halted) is surfaced accurately.
 
 async function refreshPauseState() {
-  if (!minerContract || !badgeContract) return;
+  if (!minerContract || !badgeContract) {
+    gamePaused = false; // contracts not ready — default to unpaused
+    return;
+  }
   try {
     const [minerPaused, badgePaused] = await Promise.all([
       minerContract.paused(),
@@ -1167,22 +1176,21 @@ async function refreshPauseState() {
     }
   } catch (e) {
     console.error("Pause state error:", e);
-    // Default to unpaused on error so a failing contract call doesn't
-    // silently leave the mine button permanently disabled.
-    gamePaused = false;
   }
 }
 
 // ── Refresh functions ─────────────────────────────────────────────────────────
 
 async function refreshAll() {
-  // refreshPauseState must complete FIRST so gamePaused is correctly set
-  // before refreshStats() reads it to decide whether to enable the mine button.
-  await refreshPauseState();
   await Promise.all([
+    refreshPauseState(),
     refreshStats(),
     refreshLeaderboard(),
     refreshBadge(),
+    // refreshReferralInfo() omitted — onboardContract is null until
+    // CeloMinerOnboard is deployed. The call exits immediately but adds
+    // unnecessary noise on every full refresh cycle. Re-enable when
+    // ONBOARD_ADDRESS is set. (L-3)
     refreshSupply(),
   ]);
 }
@@ -1219,7 +1227,6 @@ async function refreshStats() {
     }
   } catch (e) {
     console.error("Stats error:", e);
-    addLog("error", "Failed to load stats: " + (e?.message || e).toString().slice(0, 80));
   }
 }
 
