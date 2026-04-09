@@ -616,7 +616,7 @@
     CELOMINER
     <span id="chain-label">/ CELOMINER</span>
   </div>
-  <button id="connect-btn" onclick="connectWallet()">CONNECT WALLET</button>
+  <button id="connect-btn">CONNECT WALLET</button>
 </header>
 
 <main>
@@ -631,7 +631,7 @@
     </div>
 
     <div class="mine-btn-wrap" id="btn-wrap">
-      <button id="mine-btn" onclick="doMine()" disabled>
+      <button id="mine-btn" disabled>
         <div class="btn-icon" id="btn-icon">⛏</div>
         <div class="btn-label" id="btn-label">CONNECT</div>
       </button>
@@ -645,7 +645,7 @@
         <div class="upgrade-bar-wrap" id="upgrade-wrap">
           <div class="upgrade-bar-label" id="upgrade-label">100 cBALL to unlock DRILL</div>
           <div class="upgrade-bar"><div class="upgrade-bar-fill" id="upgrade-fill"></div></div>
-          <button id="upgrade-btn" onclick="doUpgrade()">⬆ UPGRADE TOOL</button>
+          <button id="upgrade-btn">⬆ UPGRADE TOOL</button>
         </div>
       </div>
     </div>
@@ -893,15 +893,9 @@ async function connectWallet() {
 
     const network = await provider.getNetwork();
     const chainId = network.chainId; // BigInt in ethers v6
-    console.log("Connected chainId:", chainId, typeof chainId, "— CHAINS keys:", Object.keys(CHAINS));
 
-    // Look up chain config — normalise to BigInt first (ethers v6 returns BigInt,
-    // but some injected providers return a Number or String instead).
-    // Try BigInt key first, then Number key, then String key as fallbacks.
-    activeChain = CHAINS[chainId]
-      || CHAINS[BigInt(chainId)]
-      || CHAINS[Number(chainId)]
-      || null;
+    // Look up chain config — show error if the chain is not supported.
+    activeChain = CHAINS[chainId] || null;
     if (!activeChain) {
       addLog("error", `Unsupported network (chainId ${chainId}). ` +
         `Switch to Celo (42220), Base (8453), or Ethereum (1).`);
@@ -1119,10 +1113,7 @@ async function doOnboard() {
 // only badge claiming halted) is surfaced accurately.
 
 async function refreshPauseState() {
-  if (!minerContract || !badgeContract) {
-    gamePaused = false; // contracts not ready — default to unpaused
-    return;
-  }
+  if (!minerContract || !badgeContract) return;
   try {
     const [minerPaused, badgePaused] = await Promise.all([
       minerContract.paused(),
@@ -1377,7 +1368,7 @@ async function refreshBadge() {
       if (t.claimed) {
         btnHtml = `<button class="tier-claim-btn ${t.btnClass} claimed" disabled>✓ #${t.tokenId || "?"}</button>`;
       } else if (t.eligible) {
-        btnHtml = `<button class="tier-claim-btn ${t.btnClass}" onclick="${t.claimFn}">CLAIM</button>`;
+        btnHtml = `<button class="tier-claim-btn ${t.btnClass}" data-claim="${t.claimFn}">CLAIM</button>`;
       } else {
         btnHtml = `<button class="tier-claim-btn ${t.btnClass}" disabled>LOCKED</button>`;
       }
@@ -1410,6 +1401,15 @@ async function refreshBadge() {
       </div>`;
 
     container.innerHTML = tiersHtml;
+
+    // Attach claim button handlers via event delegation (avoids inline onclick scope issues)
+    container.querySelectorAll("[data-claim]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const fn = btn.getAttribute("data-claim").replace("()", "");
+        const fnMap = { claimCommon, claimRare, claimLegendary };
+        if (fnMap[fn]) fnMap[fn]();
+      });
+    });
   } catch (e) {
     console.error("Badge error:", e);
   }
@@ -1544,6 +1544,15 @@ function startPolling() {
     await refreshSupply();
   }, 30000);
 }
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+// Attach all handlers via addEventListener instead of inline onclick attributes.
+// Inline onclick="" fails when the function is defined inside a deferred/module
+// script scope that isn't exposed on window.
+document.getElementById("mine-btn").addEventListener("click", doMine);
+document.getElementById("upgrade-btn").addEventListener("click", doUpgrade);
+document.getElementById("connect-btn").addEventListener("click", connectWallet);
+document.getElementById("ref-send-btn").addEventListener("click", doOnboard);
 </script>
 </body>
 </html>
