@@ -882,6 +882,9 @@ async function connectWallet() {
     if (network.chainId !== CELO_CHAIN_ID) {
       addLog("error", `Wrong network (chainId ${network.chainId}). ` +
         (isMiniPay ? "Enable Testnet in MiniPay Developer Settings." : "Switch to Celo mainnet (chainId 42220)."));
+      // Stop here — wiring contracts on the wrong chain causes every call to
+      // fail silently, which leaves the mine button permanently disabled.
+      return;
     }
 
     minerContract   = new ethers.Contract(CELO_MINER_ADDRESS, CELO_MINER_ABI, signer);
@@ -1139,21 +1142,26 @@ async function refreshPauseState() {
     }
   } catch (e) {
     console.error("Pause state error:", e);
+    // On error, default to unpaused so a failing contract call doesn't
+    // silently leave the mine button permanently disabled.
+    gamePaused = false;
   }
 }
 
 // ── Refresh functions ─────────────────────────────────────────────────────────
 
 async function refreshAll() {
+  // refreshPauseState must complete FIRST so gamePaused is correctly set
+  // before refreshStats() reads it to decide whether to enable the mine button.
+  // Running them in parallel with Promise.all caused a race where refreshStats
+  // could enable the button before gamePaused was written, or vice-versa.
+  await refreshPauseState();
   await Promise.all([
-    refreshPauseState(),
     refreshStats(),
     refreshLeaderboard(),
     refreshBadge(),
     // refreshReferralInfo() omitted — onboardContract is null until
-    // CeloMinerOnboard is deployed. The call exits immediately but adds
-    // unnecessary noise on every full refresh cycle. Re-enable when
-    // ONBOARD_ADDRESS is set. (L-3)
+    // CeloMinerOnboard is deployed. Re-enable when ONBOARD_ADDRESS is set.
     refreshSupply(),
   ]);
 }
@@ -1190,6 +1198,7 @@ async function refreshStats() {
     }
   } catch (e) {
     console.error("Stats error:", e);
+    addLog("error", "Failed to load stats: " + (e?.message || e).toString().slice(0, 80));
   }
 }
 
