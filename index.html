@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⛏ CELOMINER</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  /* ── Celo brand palette ───────────────────────────────────────────────────
+     Primary green:  #35D07F   Secondary gold: #FBCC5C
+     Dark bg:        #0D1F16   Surface:        #132A1E
+     Border:         #1F4A2F   Muted text:     #4A7A5A
+  ──────────────────────────────────────────────────────────────────────── */
+  :root {
+    --bg:         #0D1F16;
+    --surface:    #132A1E;
+    --surface2:   #1A3626;
+    --border:     #1F4A2F;
+    --celo:       #35D07F;
+    --celo-dim:   #1A6040;
+    --gold:       #FBCC5C;
+    --gold-dim:   #7A6020;
+    --rare:       #4fc3f7;
+    --legendary:  #c084fc;
+    --green:      #35D07F;
+    --red:        #ff4757;
+    --text:       #E8F5EE;
+    --muted:      #4A7A5A;
+    --glow-celo:  rgba(53,208,127,0.30);
+    --glow-gold:  rgba(251,204,92,0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 999; pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px
+    );
+  }
+
+  /* ── Header ───────────────────────────────────────────────────────────── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 50;
+  }
+
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 1.4rem;
+    color: var(--celo);
+    letter-spacing: 0.2em;
+    text-shadow: 0 0 20px var(--glow-celo);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .logo-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 8px var(--glow-gold);
+    display: inline-block;
+  }
+
+  .logo span { color: var(--muted); font-weight: 400; font-size: 0.85rem; margin-left: 0.3rem; }
+
+  #connect-btn {
+    background: transparent;
+    border: 1px solid var(--celo);
+    color: var(--celo);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    padding: 0.5rem 1.2rem;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+  #connect-btn:hover { background: var(--celo); color: #0D1F16; }
+  #connect-btn.connected { border-color: var(--gold); color: var(--gold); }
+
+  /* ── Layout ───────────────────────────────────────────────────────────── */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    grid-template-rows: auto auto auto;
+    gap: 1.5rem;
+    padding: 2rem 2rem 4rem;
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    border-radius: 3px;
+  }
+
+  .panel-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.35em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Game Over overlay ────────────────────────────────────────────────── */
+  #game-over-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 900;
+    background: rgba(13,31,22,0.92);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1.5rem;
+    text-align: center;
+  }
+  #game-over-overlay.show { display: flex; }
+
+  .game-over-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 3rem;
+    font-weight: 900;
+    color: var(--gold);
+    text-shadow: 0 0 40px var(--glow-gold), 0 0 80px var(--glow-gold);
+    letter-spacing: 0.15em;
+    animation: flicker 3s ease-in-out infinite;
+  }
+
+  .game-over-sub {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    color: var(--celo);
+    letter-spacing: 0.3em;
+  }
+
+  .game-over-stats {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 2;
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    92% { opacity: 1; }
+    93% { opacity: 0.6; }
+    94% { opacity: 1; }
+    96% { opacity: 0.8; }
+    97% { opacity: 1; }
+  }
+
+  /* ── Mine panel ───────────────────────────────────────────────────────── */
+  .mine-panel {
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .ball-display { text-align: center; }
+
+  .ball-count {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 4rem;
+    font-weight: 900;
+    color: var(--gold);
+    text-shadow: 0 0 40px var(--glow-gold), 0 0 80px var(--glow-gold);
+    line-height: 1;
+    transition: transform 0.1s;
+  }
+
+  .ball-count.pulse { transform: scale(1.06); }
+
+  .ball-label {
+    font-size: 0.75rem;
+    color: var(--gold-dim);
+    letter-spacing: 0.35em;
+    margin-top: 0.4rem;
+  }
+
+  /* Mine button */
+  .mine-btn-wrap {
+    position: relative;
+    width: 230px;
+    height: 230px;
+  }
+
+  #mine-btn {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #1A4A2F, #0D1F16);
+    border: 3px solid var(--celo-dim);
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.4rem;
+    outline: none;
+  }
+
+  #mine-btn:hover {
+    border-color: var(--celo);
+    box-shadow: 0 0 30px var(--glow-celo), inset 0 0 20px rgba(53,208,127,0.08);
+  }
+
+  #mine-btn:active, #mine-btn.clicking {
+    transform: scale(0.94);
+    border-color: var(--celo);
+    box-shadow: 0 0 60px var(--glow-celo), inset 0 0 30px rgba(53,208,127,0.15);
+  }
+
+  #mine-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-icon { font-size: 3.5rem; line-height: 1; filter: drop-shadow(0 0 8px var(--glow-celo)); }
+
+  .btn-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--celo-dim);
+  }
+
+  /* Orbit rings */
+  .mine-btn-wrap::before, .mine-btn-wrap::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 1px dashed var(--border);
+    animation: orbit-spin 20s linear infinite;
+  }
+  .mine-btn-wrap::before { inset: -12px; }
+  .mine-btn-wrap::after  { inset: -24px; animation-duration: 35s; animation-direction: reverse; opacity: 0.5; }
+
+  @keyframes orbit-spin { to { transform: rotate(360deg); } }
+
+  /* Floating particles */
+  .float-particle {
+    position: absolute;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--gold);
+    pointer-events: none;
+    animation: float-up 1.2s ease-out forwards;
+    text-shadow: 0 0 10px var(--glow-gold);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  @keyframes float-up {
+    0%   { opacity: 1; transform: translate(calc(-50% + var(--dx)), -50%); }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% - 90px)); }
+  }
+
+  /* Tool badge */
+  .tool-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.8rem 1.2rem;
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 340px;
+    background: var(--surface2);
+    border-radius: 2px;
+  }
+
+  .tool-icon { font-size: 1.6rem; }
+
+  .tool-info { flex: 1; }
+  .tool-name { font-family: 'Orbitron', sans-serif; font-size: 0.75rem; letter-spacing: 0.15em; }
+  .tool-name.pickaxe  { color: var(--text); }
+  .tool-name.drill    { color: var(--rare); text-shadow: 0 0 10px rgba(79,195,247,0.4); }
+  .tool-name.excavator{ color: var(--legendary); text-shadow: 0 0 10px rgba(192,132,252,0.4); }
+
+  .tool-yield { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+
+  .upgrade-bar-wrap { margin-top: 0.5rem; }
+  .upgrade-bar-label { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.3rem; }
+  .upgrade-bar { height: 4px; background: var(--border); position: relative; overflow: hidden; border-radius: 2px; }
+  .upgrade-bar-fill { height: 100%; background: linear-gradient(90deg, var(--celo-dim), var(--celo)); width: 0%; transition: width 0.4s; border-radius: 2px; }
+
+  /* Manual upgrade button — shown only when threshold is met */
+  #upgrade-btn {
+    display: none;
+    width: 100%;
+    margin-top: 0.6rem;
+    background: transparent;
+    border: 1px solid var(--celo);
+    color: var(--celo);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.45rem 0;
+    cursor: pointer;
+    letter-spacing: 0.12em;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+  #upgrade-btn:hover:not(:disabled) { background: var(--celo); color: #0D1F16; }
+  #upgrade-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Stats panel ──────────────────────────────────────────────────────── */
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-key { color: var(--muted); }
+  .stat-val { color: var(--text); font-weight: bold; }
+  .stat-val.cball { color: var(--gold); }
+  .stat-val.celo  { color: var(--celo); }
+
+  /* ── Supply bar ───────────────────────────────────────────────────────── */
+  .supply-bar-wrap { margin-top: 1rem; }
+  .supply-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+  .supply-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .supply-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--celo), var(--gold));
+    width: 0%;
+    transition: width 0.6s;
+    border-radius: 3px;
+  }
+
+  /* ── Leaderboard ──────────────────────────────────────────────────────── */
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+  }
+  .lb-row:last-child { border-bottom: none; }
+
+  .lb-rank { font-family: 'Orbitron', sans-serif; font-size: 0.7rem; color: var(--muted); width: 1.6rem; text-align: center; }
+  .lb-rank.gold   { color: #ffd700; }
+  .lb-rank.silver { color: #c0c0c0; }
+  .lb-rank.bronze { color: #cd7f32; }
+
+  .lb-addr { flex: 1; color: var(--muted); font-size: 0.72rem; }
+  .lb-addr.you { color: var(--celo); }
+  .lb-ball { color: var(--gold); font-family: 'Orbitron', sans-serif; font-size: 0.72rem; }
+
+  /* ── Badge panel ──────────────────────────────────────────────────────── */
+  .badge-tiers { display: flex; flex-direction: column; gap: 0.8rem; }
+
+  .badge-card {
+    border: 1px solid var(--border);
+    padding: 1rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--surface2);
+    border-radius: 2px;
+    transition: border-color 0.2s;
+  }
+
+  .badge-card.eligible-card { border-color: var(--celo-dim); }
+
+  .badge-emoji-sm { font-size: 1.8rem; flex-shrink: 0; }
+
+  .badge-info { flex: 1; min-width: 0; }
+  .badge-tier-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    margin-bottom: 0.2rem;
+  }
+  .badge-tier-name.legendary { color: var(--legendary); text-shadow: 0 0 10px rgba(192,132,252,0.4); }
+  .badge-tier-name.rare      { color: var(--rare); text-shadow: 0 0 10px rgba(79,195,247,0.3); }
+  .badge-tier-name.common    { color: var(--celo); }
+
+  .badge-req { font-size: 0.68rem; color: var(--muted); }
+
+  .tier-claim-btn {
+    background: transparent;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.4rem 0.9rem;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    border-radius: 2px;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .tier-claim-btn.common-btn    { border: 1px solid var(--celo);      color: var(--celo); }
+  .tier-claim-btn.rare-btn      { border: 1px solid var(--rare);      color: var(--rare); }
+  .tier-claim-btn.legendary-btn { border: 1px solid var(--legendary); color: var(--legendary); }
+
+  .tier-claim-btn.common-btn:hover:not(:disabled)    { background: var(--celo);      color: #0D1F16; }
+  .tier-claim-btn.rare-btn:hover:not(:disabled)      { background: var(--rare);      color: #0D1F16; }
+  .tier-claim-btn.legendary-btn:hover:not(:disabled) { background: var(--legendary); color: #0D1F16; }
+
+  .tier-claim-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .tier-claim-btn.claimed  { border-color: var(--muted) !important; color: var(--muted) !important; background: transparent !important; }
+
+  .badge-counts {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  .badge-count-item { flex: 1; text-align: center; padding: 0.4rem; border: 1px solid var(--border); font-size: 0.68rem; border-radius: 2px; }
+  .badge-count-num { font-family: 'Orbitron', sans-serif; font-size: 0.85rem; }
+  .badge-count-num.legendary { color: var(--legendary); }
+  .badge-count-num.rare      { color: var(--rare); }
+  .badge-count-num.common    { color: var(--celo); }
+
+  /* ── Referral panel ───────────────────────────────────────────────────── */
+  .referral-panel { grid-column: 2; }
+
+  .referral-tagline {
+    font-size: 0.82rem;
+    color: var(--gold);
+    margin-bottom: 1.2rem;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--gold-dim);
+    background: rgba(251,204,92,0.05);
+    border-radius: 2px;
+    line-height: 1.5;
+    text-align: center;
+  }
+
+  .referral-tagline span { display: block; font-size: 1rem; margin-bottom: 0.3rem; }
+
+  .ref-input-group { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem; }
+
+  .ref-input-group label { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.1em; }
+
+  .ref-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    padding: 0.6rem 0.8rem;
+    width: 100%;
+    border-radius: 2px;
+    transition: border-color 0.2s;
+  }
+  .ref-input:focus { outline: none; border-color: var(--celo); }
+
+  .ref-send-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.82rem;
+    padding: 0.65rem;
+    cursor: pointer;
+    letter-spacing: 0.12em;
+    transition: all 0.2s;
+    border-radius: 2px;
+    margin-top: 0.4rem;
+  }
+  .ref-send-btn:hover:not(:disabled) { background: var(--gold); color: #0D1F16; }
+  .ref-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .ref-info {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.8rem;
+    line-height: 1.7;
+  }
+  .ref-info strong { color: var(--celo); }
+
+  .ref-used { margin-top: 0.8rem; }
+  .ref-used-title { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.4rem; letter-spacing: 0.1em; }
+
+  .ref-slot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0;
+    font-size: 0.72rem;
+  }
+
+  .ref-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .ref-dot.filled { background: var(--celo); box-shadow: 0 0 5px var(--glow-celo); }
+  .ref-dot.empty  { background: var(--border); }
+
+  /* ── Log panel ────────────────────────────────────────────────────────── */
+  .log-panel { grid-column: 1 / -1; }
+
+  #tx-log { height: 120px; overflow-y: auto; font-size: 0.75rem; line-height: 1.8; }
+  #tx-log::-webkit-scrollbar { width: 4px; }
+  #tx-log::-webkit-scrollbar-track { background: var(--bg); }
+  #tx-log::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .log-entry { display: flex; gap: 0.8rem; }
+  .log-time  { color: var(--muted); flex-shrink: 0; }
+  .log-msg   { color: var(--text); }
+  .log-hash  { color: var(--celo-dim); }
+  .log-hash a { color: inherit; text-decoration: none; }
+  .log-hash a:hover { color: var(--celo); }
+  .log-entry.pending .log-msg { color: var(--muted); }
+  .log-entry.success .log-msg { color: var(--celo); }
+  .log-entry.error   .log-msg { color: var(--red); }
+
+  /* ── Status bar ───────────────────────────────────────────────────────── */
+  #status-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 0.4rem 2rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+    display: flex;
+    gap: 2rem;
+    z-index: 100;
+  }
+  .status-item span { color: var(--text); }
+
+  .empty { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 1rem 0; }
+
+  /* ── Pause banner ─────────────────────────────────────────────────────── */
+  #pause-banner {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 200;
+    background: var(--red);
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    letter-spacing: 0.2em;
+    text-align: center;
+    padding: 0.55rem 1rem;
+    text-shadow: none;
+    animation: pulse-banner 2s ease-in-out infinite;
+  }
+  #pause-banner.show { display: block; }
+  @keyframes pulse-banner {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.75; }
+  }
+
+  /* ── Responsive ───────────────────────────────────────────────────────── */
+  @media (max-width: 750px) {
+    main { grid-template-columns: 1fr; padding: 1rem 1rem 4rem; }
+    .mine-panel { grid-row: auto; }
+    .referral-panel { grid-column: auto; }
+    .log-panel { grid-column: auto; }
+    .game-over-title { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Pause Banner ────────────────────────────────────────────────────────── -->
+<div id="pause-banner">⚠ GAME PAUSED — Mining and badge claims are temporarily suspended. Check back soon.</div>
+
+<!-- ── Game Over Overlay ───────────────────────────────────────────────────── -->
+<div id="game-over-overlay">
+  <div class="game-over-title">⛏ GAME OVER</div>
+  <div class="game-over-sub">THANKS FOR PLAYING</div>
+  <div class="game-over-stats" id="go-stats">
+    All 1,009,400 cBALL have been mined.<br>
+    The Celo blockchain remembers every move.<br>
+    Check the leaderboard to see the top miners.
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    CELOMINER
+    <span>/ CELO MAINNET</span>
+  </div>
+  <button id="connect-btn" onclick="connectWallet()">CONNECT WALLET</button>
+</header>
+
+<main>
+
+  <!-- ── Mine panel ── -->
+  <div class="panel mine-panel">
+    <div class="panel-title">Mining Console</div>
+
+    <div class="ball-display">
+      <div class="ball-count" id="ball-count">—</div>
+      <div class="ball-label">cBALL MINED ALL-TIME</div>
+    </div>
+
+    <div class="mine-btn-wrap" id="btn-wrap">
+      <button id="mine-btn" onclick="doMine()" disabled>
+        <div class="btn-icon" id="btn-icon">⛏</div>
+        <div class="btn-label" id="btn-label">CONNECT</div>
+      </button>
+    </div>
+
+    <div class="tool-badge" id="tool-badge">
+      <div class="tool-icon" id="tool-icon">⛏</div>
+      <div class="tool-info">
+        <div class="tool-name pickaxe" id="tool-name">PICKAXE</div>
+        <div class="tool-yield" id="tool-yield">+1 cBALL / MINE</div>
+        <div class="upgrade-bar-wrap" id="upgrade-wrap">
+          <div class="upgrade-bar-label" id="upgrade-label">100 cBALL to unlock DRILL</div>
+          <div class="upgrade-bar"><div class="upgrade-bar-fill" id="upgrade-fill"></div></div>
+          <button id="upgrade-btn" onclick="doUpgrade()">⬆ UPGRADE TOOL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global supply bar -->
+    <div class="supply-bar-wrap" style="width:100%;max-width:340px">
+      <div class="supply-bar-label">
+        <span>GLOBAL SUPPLY</span>
+        <span id="supply-pct">—</span>
+      </div>
+      <div class="supply-bar"><div class="supply-bar-fill" id="supply-fill"></div></div>
+      <div style="font-size:0.68rem;color:var(--muted);margin-top:0.35rem;text-align:right" id="supply-remaining">— cBALL remaining</div>
+    </div>
+  </div>
+
+  <!-- ── Stats panel ── -->
+  <div class="panel">
+    <div class="panel-title">Your Stats</div>
+    <div class="stat-row"><span class="stat-key">ADDRESS</span>        <span class="stat-val" id="s-addr">—</span></div>
+    <div class="stat-row"><span class="stat-key">cBALL BALANCE</span>  <span class="stat-val cball" id="s-balance">—</span></div>
+    <div class="stat-row"><span class="stat-key">TOTAL MINED</span>    <span class="stat-val cball" id="s-mined">—</span></div>
+    <div class="stat-row"><span class="stat-key">TOTAL MINES</span>    <span class="stat-val" id="s-clicks">—</span></div>
+    <div class="stat-row"><span class="stat-key">CURRENT TOOL</span>   <span class="stat-val" id="s-tool">—</span></div>
+    <div class="stat-row"><span class="stat-key">YIELD / MINE</span>   <span class="stat-val cball" id="s-yield">—</span></div>
+  </div>
+
+  <!-- ── Badge panel ── -->
+  <div class="panel">
+    <div class="panel-title">Miner Badge NFTs</div>
+    <div id="badge-status">
+      <div class="empty">Connect wallet to check eligibility.</div>
+    </div>
+  </div>
+
+  <!-- ── Leaderboard panel ── -->
+  <div class="panel">
+    <div class="panel-title">Global Leaderboard</div>
+    <div id="leaderboard-rows"><div class="empty">No miners yet.</div></div>
+  </div>
+
+  <!-- ── Referral panel ── -->
+  <div class="panel referral-panel" style="opacity:0.4;pointer-events:none;user-select:none;">
+    <div class="panel-title">Onboard a Friend <span style="color:var(--red);font-size:0.6rem;letter-spacing:0.2em;margin-left:0.5rem;">COMING SOON</span></div>
+
+    <div class="referral-tagline">
+      <span>🎁</span>
+      Feeling Generous? Send a friend tokens to join the fun!
+    </div>
+
+    <div class="ref-input-group">
+      <label>FRIEND'S WALLET ADDRESS</label>
+      <input class="ref-input" id="ref-address" type="text" placeholder="0x..." disabled />
+    </div>
+
+    <div class="ref-input-group">
+      <label>AMOUNT TO SEND (CELO) — RANDOM 10–20 WILL BE FORWARDED</label>
+      <input class="ref-input" id="ref-amount" type="number" min="10" max="20" step="1" value="20" disabled />
+    </div>
+
+    <button class="ref-send-btn" id="ref-send-btn" disabled>
+      ⚡ SEND & ONBOARD FRIEND
+    </button>
+
+    <div class="ref-info">
+      Send <strong>10–20 CELO</strong> and a random amount in that range reaches your friend.<br>
+      Any excess is refunded to you instantly.<br>
+      Max <strong>5 friends</strong> per wallet. One onboard per referee.<br>
+      Transaction appears on-chain as <strong>CeloMinerOnboard</strong>.
+    </div>
+
+    <div class="ref-used" id="ref-used-section" style="display:none">
+      <div class="ref-used-title">REFERRAL SLOTS USED</div>
+      <div id="ref-slots"></div>
+    </div>
+  </div>
+
+  <!-- ── Log panel ── -->
+  <div class="panel log-panel">
+    <div class="panel-title">Transaction Log</div>
+    <div id="tx-log"><div class="empty">Transactions will appear here.</div></div>
+  </div>
+
+</main>
+
+<div id="status-bar">
+  <div class="status-item">NETWORK: <span id="st-network">—</span></div>
+  <div class="status-item">BLOCK: <span id="st-block">—</span></div>
+  <div class="status-item">GAS: <span id="st-gas">—</span></div>
+  <div class="status-item">CONTRACT: <span id="st-contract">—</span></div>
+  <div class="status-item">cBALL LEFT: <span id="st-remaining">—</span></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIG — filled automatically from deployment.json if served from the same
+// directory, or paste the addresses below manually after deploying.
+// Run:  python deploy_celominer.py --keystore ./UTC-keystore.json
+// Then: copy the addresses printed at the end into the three constants below.
+// ─────────────────────────────────────────────────────────────────────────────
+let CELO_MINER_ADDRESS   = "0x0000000000000000000000000000000000000001"; // <-- CeloMiner
+let CBALL_ADDRESS        = "0x0000000000000000000000000000000000000002"; // <-- cBALL
+let BADGE_ADDRESS        = "0x0000000000000000000000000000000000000003"; // <-- MinerBadge
+const ONBOARD_ADDRESS    = null; // CeloMinerOnboard not yet deployed
+
+// Auto-load addresses from deployment.json when served from the same directory.
+// If the file is absent (e.g. opened as a local file:// without a server) the
+// hardcoded constants above are used and a warning is logged to the console.
+(async () => {
+  try {
+    const resp = await fetch("./deployment.json");
+    if (resp.ok) {
+      const d = await resp.json();
+      if (d.CeloMiner) CELO_MINER_ADDRESS = d.CeloMiner;
+      if (d.cBALL)     CBALL_ADDRESS       = d.cBALL;
+      if (d.MinerBadge) BADGE_ADDRESS      = d.MinerBadge;
+      console.info("✅ Addresses loaded from deployment.json", { CELO_MINER_ADDRESS, CBALL_ADDRESS, BADGE_ADDRESS });
+    } else {
+      console.warn("⚠️ deployment.json not found — using hardcoded placeholder addresses. Replace them before going live.");
+    }
+  } catch {
+    console.warn("⚠️ Could not fetch deployment.json — using hardcoded placeholder addresses.");
+  }
+})();
+
+const CELO_CHAIN_ID        = 42220n; // Celo mainnet
+const MAX_CBALL_GLOBAL     = 1_009_400;
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CELO_MINER_ABI = [
+  { name: "mine",         type: "function", inputs: [],                                          outputs: [],                                         stateMutability: "nonpayable" },
+  { name: "upgrade",      type: "function", inputs: [],                                          outputs: [],                                         stateMutability: "nonpayable" },
+  { name: "getStats",     type: "function", inputs: [{ name: "player", type: "address" }],       outputs: [{ name: "totalMined", type: "uint256" }, { name: "clicks", type: "uint256" }, { name: "tool", type: "uint8" }, { name: "yieldPerClick", type: "uint256" }], stateMutability: "view" },
+  { name: "getLeaderboard",type:"function", inputs: [],                                          outputs: [{ name: "addrs", type: "address[]" }, { name: "totals", type: "uint256[]" }], stateMutability: "view" },
+  { name: "globalSupplyRemaining", type: "function", inputs: [], outputs: [{ type: "uint256" }], stateMutability: "view" },
+  { name: "totalMinted",  type: "function", inputs: [], outputs: [{ type: "uint256" }],          stateMutability: "view" },
+  { name: "paused",       type: "function", inputs: [], outputs: [{ type: "bool" }],             stateMutability: "view" },
+  { name: "MAX_CBALL_GLOBAL",  type: "function", inputs: [], outputs: [{ type: "uint256" }],     stateMutability: "view" },
+  { name: "MAX_CBALL_PER_USER",type: "function", inputs: [], outputs: [{ type: "uint256" }],     stateMutability: "view" },
+  { name: "DRILL_THRESHOLD",   type: "function", inputs: [], outputs: [{ type: "uint256" }],     stateMutability: "view" },
+  { name: "EXCAVATOR_THRESHOLD",type:"function", inputs: [], outputs: [{ type: "uint256" }],     stateMutability: "view" },
+  { name: "Mined",    type: "event", inputs: [{ name: "player", type: "address", indexed: true }, { name: "cBALLEarned", type: "uint256", indexed: false }, { name: "totalMined", type: "uint256", indexed: false }, { name: "tool", type: "uint8", indexed: false }] },
+  { name: "Upgraded", type: "event", inputs: [{ name: "player", type: "address", indexed: true }, { name: "newTool", type: "uint8", indexed: false }] },
+  { name: "Paused",   type: "event", inputs: [{ name: "by", type: "address", indexed: true }] },
+  { name: "Unpaused", type: "event", inputs: [{ name: "by", type: "address", indexed: true }] },
+];
+
+const CBALL_ABI = [
+  { name: "balanceOf", type: "function", inputs: [{ name: "", type: "address" }], outputs: [{ name: "", type: "uint256" }], stateMutability: "view" },
+];
+
+const BADGE_ABI = [
+  { name: "claimCommon",    type: "function", inputs: [], outputs: [], stateMutability: "nonpayable" },
+  { name: "claimRare",      type: "function", inputs: [], outputs: [], stateMutability: "nonpayable" },
+  { name: "claimLegendary", type: "function", inputs: [], outputs: [], stateMutability: "nonpayable" },
+  { name: "eligibility",    type: "function", inputs: [{ name: "player", type: "address" }],
+    outputs: [
+      { name: "commonEligible",    type: "bool" },
+      { name: "rareEligible",      type: "bool" },
+      { name: "legendaryEligible", type: "bool" },
+      { name: "commonClaimed",     type: "bool" },
+      { name: "rareClaimed",       type: "bool" },
+      { name: "legendaryClaimed",  type: "bool" },
+      { name: "totalMined",        type: "uint256" },
+    ], stateMutability: "view" },
+  { name: "legendaryCount", type: "function", inputs: [], outputs: [{ type: "uint256" }], stateMutability: "view" },
+  { name: "rareCount",      type: "function", inputs: [], outputs: [{ type: "uint256" }], stateMutability: "view" },
+  { name: "commonCount",    type: "function", inputs: [], outputs: [{ type: "uint256" }], stateMutability: "view" },
+  { name: "tokenOfOwnerByTier", type: "function", inputs: [{ type: "address" }, { type: "uint8" }], outputs: [{ type: "uint256" }], stateMutability: "view" },
+  { name: "paused",         type: "function", inputs: [], outputs: [{ type: "bool" }], stateMutability: "view" },
+  { name: "BadgeClaimed", type: "event", inputs: [{ name: "player", type: "address", indexed: true }, { name: "tokenId", type: "uint256", indexed: false }, { name: "tier", type: "uint8", indexed: false }] },
+];
+
+const ONBOARD_ABI = [
+  { name: "onboard", type: "function", inputs: [{ name: "referee", type: "address" }], outputs: [], stateMutability: "payable" },
+  { name: "referrerInfo", type: "function", inputs: [{ name: "referrer", type: "address" }], outputs: [{ name: "used", type: "uint256" }, { name: "remaining", type: "uint256" }], stateMutability: "view" },
+  { name: "hasBeenOnboarded", type: "function", inputs: [{ name: "", type: "address" }], outputs: [{ type: "bool" }], stateMutability: "view" },
+  { name: "CeloMinerOnboard", type: "event", inputs: [{ name: "referrer", type: "address", indexed: true }, { name: "referee", type: "address", indexed: true }, { name: "amountSent", type: "uint256", indexed: false }, { name: "refereeCount", type: "uint256", indexed: false }] },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TOOLS      = ["PICKAXE", "DRILL", "EXCAVATOR"];
+const TOOL_ICONS = ["⛏", "🔩", "🚜"];
+const TOOL_CLASS = ["pickaxe", "drill", "excavator"];
+const UPGRADE_THRESHOLDS = [100, 400];
+
+let provider, signer, account;
+let minerContract, cballContract, badgeContract, onboardContract;
+let isMining = false, isOnboarding = false;
+let stats = null;
+let gameOver = false;
+let gamePaused = false; // P-01: tracks on-chain pause state
+
+// ── Wallet ────────────────────────────────────────────────────────────────────
+
+async function connectWallet() {
+  if (!window.ethereum) {
+    addLog("error", "MetaMask not detected. Install MetaMask and add Celo network.");
+    return;
+  }
+  try {
+    const { ethers } = await import("https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js");
+    window.ethers = ethers;
+
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    account = await signer.getAddress();
+
+    const network = await provider.getNetwork();
+    document.getElementById("st-network").textContent = `Celo (${network.chainId})`;
+    document.getElementById("st-contract").textContent = CELO_MINER_ADDRESS.slice(0, 10) + "...";
+
+    if (network.chainId !== CELO_CHAIN_ID) {
+      addLog("error", `Wrong network. Please switch MetaMask to Celo mainnet (chainId 42220). Current: ${network.chainId}`);
+    }
+
+    minerContract   = new ethers.Contract(CELO_MINER_ADDRESS, CELO_MINER_ABI, signer);
+    cballContract   = new ethers.Contract(CBALL_ADDRESS, CBALL_ABI, provider);
+    badgeContract   = new ethers.Contract(BADGE_ADDRESS, BADGE_ABI, signer);
+    onboardContract = ONBOARD_ADDRESS ? new ethers.Contract(ONBOARD_ADDRESS, ONBOARD_ABI, signer) : null;
+
+    const btn = document.getElementById("connect-btn");
+    btn.textContent = account.slice(0, 6) + "..." + account.slice(-4);
+    btn.classList.add("connected");
+
+    document.getElementById("s-addr").textContent = account.slice(0, 6) + "..." + account.slice(-4);
+    document.getElementById("ref-send-btn").disabled = false;
+
+    addLog("success", `Wallet connected: ${account.slice(0, 10)}...`);
+
+    await refreshAll();
+    startPolling();
+
+  } catch (e) {
+    addLog("error", "Connection failed: " + e.message);
+  }
+}
+
+// ── Mining ────────────────────────────────────────────────────────────────────
+
+async function doMine() {
+  if (!signer || isMining || gameOver || gamePaused) return;
+  isMining = true;
+
+  const btn = document.getElementById("mine-btn");
+  btn.disabled = true;
+  btn.classList.add("clicking");
+
+  addLog("pending", "Mining... waiting for tx confirmation");
+
+  try {
+    const tx = await minerContract.mine();
+    addLog("pending", `Tx sent:`, tx.hash);
+
+    const receipt = await tx.wait();
+
+    // Parse the actual cBALLEarned from the Mined event so the particle
+    // shows the true yield (which may be < tool yield near the per-user cap).
+    let earnedAmount = null;
+    try {
+      const iface = minerContract.interface;
+      for (const log of receipt.logs) {
+        try {
+          const parsed = iface.parseLog(log);
+          if (parsed && parsed.name === "Mined") {
+            earnedAmount = Number(parsed.args.cBALLEarned);
+            break;
+          }
+        } catch { /* log belongs to a different contract */ }
+      }
+    } catch { /* fallback to null — spawnParticle handles it */ }
+
+    spawnParticle(earnedAmount);
+
+    addLog("success", `Mined! Block ${receipt.blockNumber}`, tx.hash);
+
+    await refreshAll();
+
+    const counter = document.getElementById("ball-count");
+    counter.classList.add("pulse");
+    setTimeout(() => counter.classList.remove("pulse"), 200);
+
+  } catch (e) {
+    const msg = e?.info?.error?.message || e.message || "Transaction failed";
+    // Check if game over
+    if (msg.includes("exhausted") || msg.includes("supply")) {
+      triggerGameOver();
+    }
+    addLog("error", msg.slice(0, 100));
+  } finally {
+    isMining = false;
+    if (!gameOver) {
+      btn.disabled = false;
+    }
+    btn.classList.remove("clicking");
+  }
+}
+
+// amount: actual cBALLEarned parsed from the Mined event receipt.
+// Falls back to the tool-tier estimate only if event parsing failed (earnedAmount === null).
+function spawnParticle(amount) {
+  const wrap = document.getElementById("btn-wrap");
+  const p = document.createElement("div");
+  p.className = "float-particle";
+  const y = (amount !== null && amount !== undefined)
+    ? amount
+    : (stats ? (stats.tool === 0 ? 1 : stats.tool === 1 ? 3 : 9) : 1);
+  p.textContent = `+${y} cBALL`;
+  const dx = (Math.random() - 0.5) * 70;
+  p.style.setProperty("--dx", dx + "px");
+  wrap.appendChild(p);
+  setTimeout(() => p.remove(), 1300);
+}
+
+// ── Manual Upgrade ────────────────────────────────────────────────────────────
+// Calls upgrade() directly for the edge case where mine()'s auto-upgrade was
+// skipped (e.g. the player hit the threshold exactly on a cap-truncated yield).
+
+async function doUpgrade() {
+  if (!signer || gamePaused) return;
+  const btn = document.getElementById("upgrade-btn");
+  btn.disabled = true;
+  addLog("pending", "Upgrading tool...");
+  try {
+    const tx = await minerContract.upgrade();
+    addLog("pending", "Upgrade tx sent:", tx.hash);
+    const receipt = await tx.wait();
+
+    // Confirm the new tool from the Upgraded event
+    let newToolName = null;
+    try {
+      const iface = minerContract.interface;
+      for (const log of receipt.logs) {
+        try {
+          const parsed = iface.parseLog(log);
+          if (parsed && parsed.name === "Upgraded") {
+            newToolName = TOOLS[Number(parsed.args.newTool)];
+            break;
+          }
+        } catch { /* not our event */ }
+      }
+    } catch { /* ignore */ }
+
+    addLog("success",
+      newToolName ? `Upgraded to ${newToolName}!` : "Tool upgraded!",
+      tx.hash
+    );
+    await refreshStats();
+  } catch (e) {
+    const msg = e?.info?.error?.message || e.message || "Upgrade failed";
+    addLog("error", msg.slice(0, 100));
+    btn.disabled = false;
+  }
+}
+
+
+
+async function doOnboard() {
+  if (!signer || isOnboarding || !onboardContract) return;
+
+  const referee = document.getElementById("ref-address").value.trim();
+  const amountInput = parseFloat(document.getElementById("ref-amount").value);
+
+  if (!referee || !referee.startsWith("0x") || referee.length !== 42) {
+    addLog("error", "Please enter a valid Ethereum/Celo wallet address.");
+    return;
+  }
+  if (amountInput < 10 || amountInput > 20) {
+    addLog("error", "Amount must be between 10 and 20 CELO.");
+    return;
+  }
+
+  isOnboarding = true;
+  const btn = document.getElementById("ref-send-btn");
+  btn.disabled = true;
+
+  addLog("pending", `Onboarding ${referee.slice(0, 10)}... sending ${amountInput} CELO`);
+
+  try {
+    const amountWei = window.ethers.parseEther(amountInput.toString());
+    const tx = await onboardContract.onboard(referee, { value: amountWei });
+    addLog("pending", "Onboard tx sent:", tx.hash);
+
+    const receipt = await tx.wait();
+    addLog("success", `Friend onboarded! Block ${receipt.blockNumber}`, tx.hash);
+
+    document.getElementById("ref-address").value = "";
+    await refreshReferralInfo();
+
+  } catch (e) {
+    const msg = e?.info?.error?.message || e.message || "Onboard failed";
+    addLog("error", msg.slice(0, 100));
+  } finally {
+    isOnboarding = false;
+    btn.disabled = false;
+  }
+}
+
+// ── Pause state (P-01) ───────────────────────────────────────────────────────
+//
+// Reads paused() from both CeloMiner and MinerBadge. If either is paused the
+// banner is shown, the mine button is disabled, and claim buttons get a visual
+// indicator. The badge contract is checked separately so a partial pause (e.g.
+// only badge claiming halted) is surfaced accurately.
+
+async function refreshPauseState() {
+  if (!minerContract || !badgeContract) return;
+  try {
+    const [minerPaused, badgePaused] = await Promise.all([
+      minerContract.paused(),
+      badgeContract.paused(),
+    ]);
+
+    const anyPaused = minerPaused || badgePaused;
+
+    // Update module-level flag used by doMine() and refreshBadge()
+    gamePaused = anyPaused;
+
+    // Banner — shown whenever either contract is paused
+    const banner = document.getElementById("pause-banner");
+    if (anyPaused) {
+      let msg = "⚠ GAME PAUSED";
+      if (minerPaused && badgePaused) {
+        msg += " — Mining and badge claims are temporarily suspended.";
+      } else if (minerPaused) {
+        msg += " — Mining is temporarily suspended. Badge claims still active.";
+      } else {
+        msg += " — Badge claims are temporarily suspended. Mining still active.";
+      }
+      banner.textContent = msg;
+      banner.classList.add("show");
+    } else {
+      banner.classList.remove("show");
+    }
+
+    // Mine button
+    const mineBtn = document.getElementById("mine-btn");
+    if (!gameOver) {
+      if (minerPaused) {
+        mineBtn.disabled = true;
+        document.getElementById("btn-label").textContent = "PAUSED";
+      }
+      // If not paused, refreshStats() will re-enable the button on its own pass
+    }
+
+    // Log a change in pause state so players can see it in the tx log
+    if (anyPaused) {
+      const already = banner.dataset.wasShown === "1";
+      if (!already) {
+        addLog("error", "⚠ Contracts paused — gameplay halted by owner. Check back soon.");
+        banner.dataset.wasShown = "1";
+      }
+    } else {
+      if (banner.dataset.wasShown === "1") {
+        addLog("success", "✅ Contracts unpaused — gameplay resumed.");
+      }
+      banner.dataset.wasShown = "0";
+    }
+  } catch (e) {
+    console.error("Pause state error:", e);
+  }
+}
+
+// ── Refresh functions ─────────────────────────────────────────────────────────
+
+async function refreshAll() {
+  await Promise.all([
+    refreshPauseState(),
+    refreshStats(),
+    refreshLeaderboard(),
+    refreshBadge(),
+    // refreshReferralInfo() omitted — onboardContract is null until
+    // CeloMinerOnboard is deployed. The call exits immediately but adds
+    // unnecessary noise on every full refresh cycle. Re-enable when
+    // ONBOARD_ADDRESS is set. (L-3)
+    refreshSupply(),
+  ]);
+}
+
+async function refreshStats() {
+  if (!minerContract || !account) return;
+  try {
+    const [totalMined, clicks, tool, yieldPerClick] = await minerContract.getStats(account);
+    const balance = await cballContract.balanceOf(account);
+
+    stats = {
+      totalMined: Number(totalMined),
+      clicks: Number(clicks),
+      tool: Number(tool),
+      yieldPerClick: Number(yieldPerClick),
+    };
+
+    document.getElementById("ball-count").textContent = stats.totalMined.toLocaleString();
+    document.getElementById("s-balance").textContent  = Number(balance).toLocaleString() + " cBALL";
+    document.getElementById("s-mined").textContent    = stats.totalMined.toLocaleString() + " cBALL";
+    document.getElementById("s-clicks").textContent   = stats.clicks.toLocaleString();
+    document.getElementById("s-tool").textContent     = TOOLS[stats.tool];
+    document.getElementById("s-yield").textContent    = `+${stats.yieldPerClick} cBALL`;
+
+    updateToolBadge(stats);
+
+    // Enable mine button only when connected, not game over, and not paused
+    if (!gameOver && !gamePaused) {
+      document.getElementById("mine-btn").disabled = false;
+      document.getElementById("btn-label").textContent = "MINE";
+    } else if (gamePaused) {
+      document.getElementById("mine-btn").disabled = true;
+      document.getElementById("btn-label").textContent = "PAUSED";
+    }
+  } catch (e) {
+    console.error("Stats error:", e);
+  }
+}
+
+function updateToolBadge(s) {
+  const toolClass = TOOL_CLASS[s.tool];
+  document.getElementById("tool-icon").textContent = TOOL_ICONS[s.tool];
+  const tn = document.getElementById("tool-name");
+  tn.textContent = TOOLS[s.tool];
+  tn.className   = `tool-name ${toolClass}`;
+  document.getElementById("tool-yield").textContent = `+${s.yieldPerClick} cBALL / MINE`;
+  document.getElementById("btn-icon").textContent   = TOOL_ICONS[s.tool];
+
+  const upgradeWrap = document.getElementById("upgrade-wrap");
+  const upgradeBtn  = document.getElementById("upgrade-btn");
+  if (s.tool === 2) {
+    // Max tier reached — hide the upgrade bar entirely so there is no
+    // misleading "LOCKED" or "0 cBALL to unlock" message.
+    upgradeWrap.style.display = "none";
+  } else {
+    upgradeWrap.style.display = "";
+    const threshold = UPGRADE_THRESHOLDS[s.tool];
+    const nextTool  = TOOLS[s.tool + 1];
+    const progress  = Math.min(s.totalMined / threshold, 1);
+    const ready     = s.totalMined >= threshold;
+    document.getElementById("upgrade-label").textContent = ready
+      ? `Ready to upgrade to ${nextTool}!`
+      : `${threshold - s.totalMined} cBALL to unlock ${nextTool}`;
+    document.getElementById("upgrade-fill").style.width = (progress * 100) + "%";
+
+    // Show the manual upgrade button only when the threshold is met.
+    // This handles the edge case where mine() auto-upgrade was skipped
+    // (e.g. the player hit exactly the threshold on a capped yield).
+    upgradeBtn.style.display = ready ? "block" : "none";
+    upgradeBtn.textContent   = ready ? `⬆ UPGRADE TO ${nextTool}` : "⬆ UPGRADE TOOL";
+  }
+}
+
+async function refreshSupply() {
+  if (!minerContract) return;
+  try {
+    const remaining = await minerContract.globalSupplyRemaining();
+    const rem       = Number(remaining);
+    const minted    = MAX_CBALL_GLOBAL - rem;
+    const pct       = ((minted / MAX_CBALL_GLOBAL) * 100).toFixed(2);
+
+    document.getElementById("supply-pct").textContent       = pct + "% mined";
+    document.getElementById("supply-fill").style.width      = pct + "%";
+    document.getElementById("supply-remaining").textContent = rem.toLocaleString() + " cBALL remaining";
+    document.getElementById("st-remaining").textContent     = rem.toLocaleString();
+
+    if (rem === 0 && !gameOver) triggerGameOver();
+  } catch (e) {
+    console.error("Supply error:", e);
+  }
+}
+
+async function refreshLeaderboard() {
+  if (!minerContract) return;
+  try {
+    const [addrs, totals] = await minerContract.getLeaderboard();
+    const container = document.getElementById("leaderboard-rows");
+
+    if (addrs.length === 0) {
+      container.innerHTML = '<div class="empty">No miners yet.</div>';
+      return;
+    }
+
+    const rankLabels  = ["#1", "#2", "#3"];
+    const rankClasses = ["gold", "silver", "bronze"];
+
+    container.innerHTML = addrs.map((addr, i) => {
+      const rankLabel = i < 3 ? rankLabels[i] : `#${i + 1}`;
+      const rankCls   = i < 3 ? rankClasses[i] : "";
+      const isYou     = account && addr.toLowerCase() === account.toLowerCase();
+      return `
+        <div class="lb-row">
+          <div class="lb-rank ${rankCls}">${rankLabel}</div>
+          <div class="lb-addr ${isYou ? "you" : ""}">${isYou ? "YOU" : addr.slice(0, 6) + "..." + addr.slice(-4)}</div>
+          <div class="lb-ball">${Number(totals[i]).toLocaleString()} cBALL</div>
+        </div>`;
+    }).join("");
+  } catch (e) {
+    console.error("Leaderboard error:", e);
+  }
+}
+
+// ── Badge ─────────────────────────────────────────────────────────────────────
+
+async function refreshBadge() {
+  if (!badgeContract || !account) return;
+  const container = document.getElementById("badge-status");
+  try {
+    const [
+      commonEligible, rareEligible, legendaryEligible,
+      commonClaimed, rareClaimed, legendaryClaimed,
+      totalMined
+    ] = await badgeContract.eligibility(account);
+
+    const [lCount, rCount, cCount] = await Promise.all([
+      badgeContract.legendaryCount(),
+      badgeContract.rareCount(),
+      badgeContract.commonCount(),
+    ]);
+
+    const tm = Number(totalMined);
+    const commonProgress  = Math.min(tm / 400, 1);
+
+    // Build per-tier cards
+    const tiers = [
+      {
+        tier: "legendary",
+        emoji: "⭐",
+        label: "LEGENDARY",
+        req: "9,800 cBALL + Top-10 Leaderboard",
+        eligible: legendaryEligible,
+        claimed: legendaryClaimed,
+        btnClass: "legendary-btn",
+        claimFn: "claimLegendary()",
+        tokenId: legendaryClaimed ? await safeGetTokenId(2) : null,
+      },
+      {
+        tier: "rare",
+        emoji: "💎",
+        label: "RARE",
+        req: "9,800 cBALL mined",
+        eligible: rareEligible,
+        claimed: rareClaimed,
+        btnClass: "rare-btn",
+        claimFn: "claimRare()",
+        tokenId: rareClaimed ? await safeGetTokenId(1) : null,
+      },
+      {
+        tier: "common",
+        emoji: "⛏",
+        label: "COMMON",
+        req: "400 cBALL mined (Excavator)",
+        eligible: commonEligible,
+        claimed: commonClaimed,
+        btnClass: "common-btn",
+        claimFn: "claimCommon()",
+        tokenId: commonClaimed ? await safeGetTokenId(0) : null,
+      },
+    ];
+
+    let tiersHtml = '<div class="badge-tiers">';
+    for (const t of tiers) {
+      let btnHtml;
+      if (t.claimed) {
+        btnHtml = `<button class="tier-claim-btn ${t.btnClass} claimed" disabled>✓ #${t.tokenId || "?"}</button>`;
+      } else if (t.eligible) {
+        btnHtml = `<button class="tier-claim-btn ${t.btnClass}" onclick="${t.claimFn}">CLAIM</button>`;
+      } else {
+        btnHtml = `<button class="tier-claim-btn ${t.btnClass}" disabled>LOCKED</button>`;
+      }
+      tiersHtml += `
+        <div class="badge-card ${t.eligible && !t.claimed ? "eligible-card" : ""}">
+          <div class="badge-emoji-sm">${t.emoji}</div>
+          <div class="badge-info">
+            <div class="badge-tier-name ${t.tier}">${t.label}</div>
+            <div class="badge-req">${t.req}</div>
+          </div>
+          ${btnHtml}
+        </div>`;
+    }
+    tiersHtml += '</div>';
+
+    tiersHtml += `
+      <div class="badge-counts">
+        <div class="badge-count-item">
+          <div class="badge-count-num legendary">${lCount}</div>
+          <div>Legendary</div>
+        </div>
+        <div class="badge-count-item">
+          <div class="badge-count-num rare">${rCount}</div>
+          <div>Rare</div>
+        </div>
+        <div class="badge-count-item">
+          <div class="badge-count-num common">${cCount}</div>
+          <div>Common</div>
+        </div>
+      </div>`;
+
+    container.innerHTML = tiersHtml;
+  } catch (e) {
+    console.error("Badge error:", e);
+  }
+}
+
+// M-2: addr parameter removed — it was passed as 0 at every call site and
+//      ignored inside the function body. The function always looks up tokens
+//      for the connected account.
+async function safeGetTokenId(tierIndex) {
+  try {
+    const id = await badgeContract.tokenOfOwnerByTier(account, tierIndex);
+    return Number(id);
+  } catch { return null; }
+}
+
+async function claimCommon() {
+  await doClaim("Common", () => badgeContract.claimCommon());
+}
+
+async function claimRare() {
+  await doClaim("Rare", () => badgeContract.claimRare());
+}
+
+async function claimLegendary() {
+  await doClaim("Legendary", () => badgeContract.claimLegendary());
+}
+
+async function doClaim(tierName, txFn) {
+  if (!badgeContract) return;
+  if (gamePaused) {
+    addLog("error", "Contracts are paused — badge claims suspended.");
+    return;
+  }
+  addLog("pending", `Claiming ${tierName} badge...`);
+  try {
+    const tx = await txFn();
+    addLog("pending", `Claim tx sent:`, tx.hash);
+    await tx.wait();
+    addLog("success", `${tierName} badge claimed!`, tx.hash);
+    await refreshBadge();
+  } catch (e) {
+    addLog("error", (e?.info?.error?.message || e.message || "Claim failed").slice(0, 100));
+  }
+}
+
+// ── Referral Info ─────────────────────────────────────────────────────────────
+
+async function refreshReferralInfo() {
+  if (!onboardContract || !account) return;
+  try {
+    const [used, remaining] = await onboardContract.referrerInfo(account);
+    const usedN = Number(used);
+    const section = document.getElementById("ref-used-section");
+    section.style.display = "";
+    let slotsHtml = "";
+    for (let i = 0; i < 5; i++) {
+      const filled = i < usedN;
+      slotsHtml += `
+        <div class="ref-slot">
+          <div class="ref-dot ${filled ? "filled" : "empty"}"></div>
+          <span style="color:${filled ? "var(--celo)" : "var(--muted)"}">
+            ${filled ? `Slot ${i + 1} — Used` : `Slot ${i + 1} — Available`}
+          </span>
+        </div>`;
+    }
+    document.getElementById("ref-slots").innerHTML = slotsHtml;
+  } catch (e) {
+    console.error("Referral info error:", e);
+  }
+}
+
+// ── Game Over ─────────────────────────────────────────────────────────────────
+
+function triggerGameOver() {
+  gameOver = true;
+  const mineBtn = document.getElementById("mine-btn");
+  mineBtn.disabled = true;
+  document.getElementById("btn-label").textContent = "EXHAUSTED";
+
+  document.getElementById("game-over-overlay").classList.add("show");
+}
+
+// ── Log ───────────────────────────────────────────────────────────────────────
+
+function addLog(type, msg, hash) {
+  const log = document.getElementById("tx-log");
+  const empty = log.querySelector(".empty");
+  if (empty) empty.remove();
+
+  const now = new Date().toLocaleTimeString();
+  const entry = document.createElement("div");
+  entry.className = `log-entry ${type}`;
+
+  const hashPart = hash
+    ? `<span class="log-hash"><a href="https://celoscan.io/tx/${hash}" target="_blank">${hash.slice(0, 12)}…</a></span>`
+    : "";
+
+  entry.innerHTML = `<span class="log-time">[${now}]</span><span class="log-msg">${msg}</span>${hashPart}`;
+  log.prepend(entry);
+
+  while (log.children.length > 50) log.removeChild(log.lastChild);
+}
+
+// ── Polling ───────────────────────────────────────────────────────────────────
+
+function startPolling() {
+  setInterval(async () => {
+    if (!provider) return;
+    try {
+      const block   = await provider.getBlockNumber();
+      const feeData = await provider.getFeeData();
+      document.getElementById("st-block").textContent = block.toLocaleString();
+      if (feeData.gasPrice) {
+        const gwei = Number(window.ethers.formatUnits(feeData.gasPrice, "gwei")).toFixed(3);
+        document.getElementById("st-gas").textContent = gwei + " gwei";
+      }
+    } catch {}
+  }, 5000);
+
+  // P-01: poll pause state every 15 s so the UI reacts quickly to an emergency
+  // pause without waiting for the slower 30 s leaderboard/supply cycle.
+  setInterval(async () => {
+    await refreshPauseState();
+  }, 15000);
+
+  setInterval(async () => {
+    await refreshLeaderboard();
+    await refreshSupply();
+  }, 30000);
+}
+</script>
+</body>
+</html>
