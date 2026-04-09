@@ -883,6 +883,8 @@ async function connectWallet() {
     stopPolling();
     gameOver = false;
     gamePaused = false;
+    isMining = false;
+    isOnboarding = false;
     document.getElementById("tx-log").innerHTML = '<div class="empty">Transactions will appear here.</div>';
     const { ethers } = await import("https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js");
     window.ethers = ethers;
@@ -956,6 +958,12 @@ async function connectWallet() {
 
     addLog("success",
       `Wallet connected${isMiniPay ? " via MiniPay" : ""} on ${activeChain.name}: ${account.slice(0, 10)}...`);
+
+    // Optimistically enable the mine button now — refreshAll will disable it again
+    // if the contract reports paused or game over. This prevents the button staying
+    // stuck disabled if refreshPauseState/refreshStats have a transient RPC error.
+    document.getElementById("mine-btn").disabled = false;
+    document.getElementById("btn-label").textContent = "MINE";
 
     await refreshAll();
     startPolling();
@@ -1204,8 +1212,9 @@ async function refreshPauseState() {
 
 async function refreshAll() {
   // refreshPauseState must complete first — refreshStats reads gamePaused to decide
-  // whether to re-enable the mine button. Running them in parallel risks a stale read.
-  await refreshPauseState();
+  // whether to re-enable the mine button. Wrapped in try-catch so a contract error
+  // here never blocks refreshStats from running (which enables the mine button).
+  try { await refreshPauseState(); } catch (e) { console.error("refreshPauseState error:", e); }
   await Promise.all([
     refreshStats(),
     refreshLeaderboard(),
@@ -1623,4 +1632,3 @@ function startPolling() {
 </script>
 </body>
 </html>
-
