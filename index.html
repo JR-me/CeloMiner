@@ -98,6 +98,8 @@
   }
   #connect-btn:hover { background: var(--celo); color: #0D1F16; }
   #connect-btn.connected { border-color: var(--gold); color: var(--gold); }
+  /* MiniPay: wallet is implicit — hide the connect button entirely */
+  body.minipay #connect-btn { display: none; }
 
   /* ── Layout ───────────────────────────────────────────────────────────── */
   main {
@@ -612,7 +614,7 @@
   <div class="logo">
     <div class="logo-dot"></div>
     CELOMINER
-    <span>/ CELO MAINNET</span>
+    <span id="chain-label">/ CELOMINER</span>
   </div>
   <button id="connect-btn" onclick="connectWallet()">CONNECT WALLET</button>
 </header>
@@ -738,38 +740,63 @@
 
 <script>
 // ─────────────────────────────────────────────────────────────────────────────
-// CONFIG — filled automatically from deployment.json if served from the same
-// directory, or paste the addresses below manually after deploying.
-// Run:  python deploy_celominer.py --keystore ./UTC-keystore.json
-// Then: copy the addresses printed at the end into the three constants below.
+// MULTI-CHAIN CONFIG
+// Each chain entry holds the deployed contract addresses for that network.
+// Paste your deployed addresses below for each chain after deploying.
+// The correct set is selected automatically based on the wallet's chainId.
 // ─────────────────────────────────────────────────────────────────────────────
-let CELO_MINER_ADDRESS   = "0x0A8a6DECe70e632375251a821a260A8bAa9bf99B"; // <-- CeloMiner
-let CBALL_ADDRESS        = "0x13FeC2AD48fcADb14fc06603675ECc46455AE3f7"; // <-- cBALL
-let BADGE_ADDRESS        = "0xE690Cd2A34880Da9DD28a593ce75c198084eb9A5"; // <-- MinerBadge
-const ONBOARD_ADDRESS    = null; // CeloMinerOnboard not yet deployed
+const CHAINS = {
+  // ── Celo Mainnet ────────────────────────────────────────────────────────
+  42220n: {
+    name:          "Celo",
+    label:         "CELO MAINNET",
+    explorerTx:    "https://celoscan.io/tx/",
+    minerAddress:  "0x0000000000000000000000000000000000000001", // <-- CeloMiner on Celo
+    cballAddress:  "0x0000000000000000000000000000000000000002", // <-- cBALL on Celo
+    badgeAddress:  "0x0000000000000000000000000000000000000003", // <-- MinerBadge on Celo
+  },
+  // ── Base Mainnet ─────────────────────────────────────────────────────────
+  8453n: {
+    name:          "Base",
+    label:         "BASE MAINNET",
+    explorerTx:    "https://basescan.org/tx/",
+    minerAddress:  "0x0000000000000000000000000000000000000001", // <-- CeloMiner on Base
+    cballAddress:  "0x0000000000000000000000000000000000000002", // <-- cBALL on Base
+    badgeAddress:  "0x0000000000000000000000000000000000000003", // <-- MinerBadge on Base
+  },
+  // ── Ethereum Mainnet ──────────────────────────────────────────────────────
+  1n: {
+    name:          "Ethereum",
+    label:         "ETH MAINNET",
+    explorerTx:    "https://etherscan.io/tx/",
+    minerAddress:  "0x0000000000000000000000000000000000000001", // <-- CeloMiner on Ethereum
+    cballAddress:  "0x0000000000000000000000000000000000000002", // <-- cBALL on Ethereum
+    badgeAddress:  "0x0000000000000000000000000000000000000003", // <-- MinerBadge on Ethereum
+  },
+};
 
-// Auto-load addresses from deployment.json when served from the same directory.
-// If the file is absent (e.g. opened as a local file:// without a server) the
-// hardcoded constants above are used and a warning is logged to the console.
-(async () => {
-  try {
-    const resp = await fetch("./deployment.json");
-    if (resp.ok) {
-      const d = await resp.json();
-      if (d.CeloMiner) CELO_MINER_ADDRESS = d.CeloMiner;
-      if (d.cBALL)     CBALL_ADDRESS       = d.cBALL;
-      if (d.MinerBadge) BADGE_ADDRESS      = d.MinerBadge;
-      console.info("✅ Addresses loaded from deployment.json", { CELO_MINER_ADDRESS, CBALL_ADDRESS, BADGE_ADDRESS });
-    } else {
-      console.warn("⚠️ deployment.json not found — using hardcoded placeholder addresses. Replace them before going live.");
-    }
-  } catch {
-    console.warn("⚠️ Could not fetch deployment.json — using hardcoded placeholder addresses.");
-  }
-})();
+const ONBOARD_ADDRESS  = null;   // CeloMinerOnboard not yet deployed
+const MAX_CBALL_GLOBAL = 1_009_400;
 
-const CELO_CHAIN_ID        = 42220n; // Celo mainnet
-const MAX_CBALL_GLOBAL     = 1_009_400;
+// Active chain — set during connectWallet() once the wallet reports its chainId.
+let activeChain = null;
+
+// Derive contract addresses from the active chain (called after connectWallet sets activeChain).
+function getAddresses() {
+  if (!activeChain) return { minerAddress: null, cballAddress: null, badgeAddress: null };
+  return {
+    minerAddress: activeChain.minerAddress,
+    cballAddress: activeChain.cballAddress,
+    badgeAddress: activeChain.badgeAddress,
+  };
+}
+
+// MiniPay: auto-connect immediately on page load — the wallet is already
+// injected by the time the script runs, so no user gesture is needed.
+// Outside MiniPay the user still clicks the connect button manually.
+if (window.ethereum && window.ethereum.isMiniPay) {
+  window.addEventListener("load", () => connectWallet());
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -840,9 +867,14 @@ let gamePaused = false; // P-01: tracks on-chain pause state
 
 // ── Wallet ────────────────────────────────────────────────────────────────────
 
+// isMiniPay: true when the app is loaded inside the MiniPay wallet.
+// MiniPay injects window.ethereum with isMiniPay = true and connects
+// automatically — no user prompt needed and no connect button shown.
+const isMiniPay = !!(window.ethereum && window.ethereum.isMiniPay);
+
 async function connectWallet() {
   if (!window.ethereum) {
-    addLog("error", "MetaMask not detected. Install MetaMask and add Celo network.");
+    addLog("error", "No wallet detected. Open this app in MiniPay or a browser with MetaMask installed.");
     return;
   }
   try {
@@ -850,31 +882,54 @@ async function connectWallet() {
     window.ethers = ethers;
 
     provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = await provider.getSigner();
+
+    // MiniPay: wallet is already connected — no eth_requestAccounts prompt needed.
+    if (!isMiniPay) {
+      await provider.send("eth_requestAccounts", []);
+    }
+
+    signer  = await provider.getSigner();
     account = await signer.getAddress();
 
     const network = await provider.getNetwork();
-    document.getElementById("st-network").textContent = `Celo (${network.chainId})`;
-    document.getElementById("st-contract").textContent = CELO_MINER_ADDRESS.slice(0, 10) + "...";
+    const chainId = network.chainId; // BigInt in ethers v6
 
-    if (network.chainId !== CELO_CHAIN_ID) {
-      addLog("error", `Wrong network. Please switch MetaMask to Celo mainnet (chainId 42220). Current: ${network.chainId}`);
+    // Look up chain config — show error if the chain is not supported.
+    activeChain = CHAINS[chainId] || null;
+    if (!activeChain) {
+      addLog("error", `Unsupported network (chainId ${chainId}). ` +
+        `Switch to Celo (42220), Base (8453), or Ethereum (1).`);
+      return;
     }
 
-    minerContract   = new ethers.Contract(CELO_MINER_ADDRESS, CELO_MINER_ABI, signer);
-    cballContract   = new ethers.Contract(CBALL_ADDRESS, CBALL_ABI, provider);
-    badgeContract   = new ethers.Contract(BADGE_ADDRESS, BADGE_ABI, signer);
+    const { minerAddress, cballAddress, badgeAddress } = getAddresses();
+
+    // Update header subtitle and status bar to reflect the active chain.
+    document.querySelector("header .logo span").textContent = `/ ${activeChain.label}`;
+    document.getElementById("st-network").textContent = isMiniPay
+      ? `MiniPay / ${activeChain.name}`
+      : `${activeChain.name} (${chainId})`;
+    document.getElementById("st-contract").textContent = minerAddress.slice(0, 10) + "...";
+
+    minerContract   = new ethers.Contract(minerAddress,  CELO_MINER_ABI, signer);
+    cballContract   = new ethers.Contract(cballAddress,  CBALL_ABI,       provider);
+    badgeContract   = new ethers.Contract(badgeAddress,  BADGE_ABI,       signer);
     onboardContract = ONBOARD_ADDRESS ? new ethers.Contract(ONBOARD_ADDRESS, ONBOARD_ABI, signer) : null;
 
     const btn = document.getElementById("connect-btn");
-    btn.textContent = account.slice(0, 6) + "..." + account.slice(-4);
-    btn.classList.add("connected");
+    if (isMiniPay) {
+      // MiniPay: hide the button — wallet is implicit, no manual connect needed.
+      document.body.classList.add("minipay");
+    } else {
+      btn.textContent = account.slice(0, 6) + "..." + account.slice(-4);
+      btn.classList.add("connected");
+    }
 
     document.getElementById("s-addr").textContent = account.slice(0, 6) + "..." + account.slice(-4);
     document.getElementById("ref-send-btn").disabled = false;
 
-    addLog("success", `Wallet connected: ${account.slice(0, 10)}...`);
+    addLog("success",
+      `Wallet connected${isMiniPay ? " via MiniPay" : ""} on ${activeChain.name}: ${account.slice(0, 10)}...`);
 
     await refreshAll();
     startPolling();
@@ -897,7 +952,13 @@ async function doMine() {
   addLog("pending", "Mining... waiting for tx confirmation");
 
   try {
-    const tx = await minerContract.mine();
+    // MiniPay requires legacy transactions — EIP-1559 (maxFeePerGas / maxPriorityFeePerGas)
+    // is not supported. Pass gasPrice explicitly to force a legacy tx on both
+    // MiniPay and standard MetaMask (MetaMask accepts legacy txs fine).
+    const feeData = await provider.getFeeData();
+    const tx = await minerContract.mine({
+      gasPrice: feeData.gasPrice,
+    });
     addLog("pending", `Tx sent:`, tx.hash);
 
     const receipt = await tx.wait();
@@ -1356,15 +1417,15 @@ async function safeGetTokenId(tierIndex) {
 }
 
 async function claimCommon() {
-  await doClaim("Common", () => badgeContract.claimCommon());
+  await doClaim("Common", (overrides) => badgeContract.claimCommon(overrides));
 }
 
 async function claimRare() {
-  await doClaim("Rare", () => badgeContract.claimRare());
+  await doClaim("Rare", (overrides) => badgeContract.claimRare(overrides));
 }
 
 async function claimLegendary() {
-  await doClaim("Legendary", () => badgeContract.claimLegendary());
+  await doClaim("Legendary", (overrides) => badgeContract.claimLegendary(overrides));
 }
 
 async function doClaim(tierName, txFn) {
@@ -1375,7 +1436,10 @@ async function doClaim(tierName, txFn) {
   }
   addLog("pending", `Claiming ${tierName} badge...`);
   try {
-    const tx = await txFn();
+    // MiniPay: legacy transaction (no EIP-1559 fields)
+    const feeData = await provider.getFeeData();
+    const overrides = { gasPrice: feeData.gasPrice };
+    const tx = await txFn(overrides);
     addLog("pending", `Claim tx sent:`, tx.hash);
     await tx.wait();
     addLog("success", `${tierName} badge claimed!`, tx.hash);
@@ -1433,8 +1497,9 @@ function addLog(type, msg, hash) {
   const entry = document.createElement("div");
   entry.className = `log-entry ${type}`;
 
+  const explorer = (activeChain && activeChain.explorerTx) || "https://celoscan.io/tx/";
   const hashPart = hash
-    ? `<span class="log-hash"><a href="https://celoscan.io/tx/${hash}" target="_blank">${hash.slice(0, 12)}…</a></span>`
+    ? `<span class="log-hash"><a href="${explorer}${hash}" target="_blank">${hash.slice(0, 12)}…</a></span>`
     : "";
 
   entry.innerHTML = `<span class="log-time">[${now}]</span><span class="log-msg">${msg}</span>${hashPart}`;
