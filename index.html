@@ -1189,14 +1189,26 @@ async function refreshAll() {
 async function refreshStats() {
   if (!minerContract || !account) return;
   try {
-    const [totalMined, clicks, tool, yieldPerClick] = await minerContract.getStats(account);
+    //const [totalMined, clicks, tool, yieldPerClick] = await minerContract.getStats(account);
+    const res = await minerContract.getStats(account);
+    const totalMined     = Number(res.totalMined);
+    const clicks         = Number(res.clicks);
+    const tool           = Number(res.tool);
+    const yieldPerClick  = Number(res.yieldPerClick);
     const balance = await cballContract.balanceOf(account);
 
-    stats = {
-      totalMined: Number(totalMined),
-      clicks: Number(clicks),
-      tool: Number(tool),
-      yieldPerClick: Number(yieldPerClick),
+   //stats = {
+   //   totalMined: Number(totalMined),
+   //   clicks: Number(clicks),
+   //   tool: Number(tool),
+   //  yieldPerClick: Number(yieldPerClick),
+
+   stats = {
+   totalMined,
+   clicks,
+   tool,
+    yieldPerClick,
+};   
     };
 
     document.getElementById("ball-count").textContent = stats.totalMined.toLocaleString();
