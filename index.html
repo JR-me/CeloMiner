@@ -447,26 +447,46 @@
 <!-- ── Main ── -->
 <div class="main">
 
-  <!-- Contract Addresses -->
-  <div class="config-card">
-    <div class="section-title">Contract Addresses</div>
-    <div class="config-grid">
-      <div>
-        <div class="config-label" id="cfg-label-token">Token</div>
-        <input class="config-input" id="cfg-cball" placeholder="0x…" />
+  <!-- Contract Addresses — auto-loaded from CHAINS registry -->
+  <div class="config-card" id="config-section">
+
+    <!-- Shown when addresses ARE configured -->
+    <div id="cfg-status-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>
+        <span style="font-size:13px;color:var(--text2);" id="cfg-status-text">Contracts loaded from registry</span>
+        <span id="config-status" style="font-size:13px;color:var(--green);"></span>
       </div>
-      <div>
-        <div class="config-label" id="cfg-label-miner">Miner</div>
-        <input class="config-input" id="cfg-miner" placeholder="0x…" />
-      </div>
-      <div>
-        <div class="config-label" id="cfg-label-badge">Badge</div>
-        <input class="config-input" id="cfg-badge" placeholder="0x…" />
-      </div>
+      <button class="btn btn-sm" onclick="toggleCfgDrawer()" id="cfg-toggle-btn">Override addresses</button>
     </div>
-    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;">
-      <button class="btn btn-primary" onclick="saveConfig()">Apply Addresses</button>
-      <span id="config-status" style="font-size:13px;color:var(--text3);"></span>
+
+    <!-- Warning when no addresses are set for this chain -->
+    <div class="notice warn hidden" id="cfg-no-addresses" style="margin-top:12px;margin-bottom:0;">
+      ⚠️ No contract addresses are configured for this network yet.
+      Deploy the contracts first, then paste the addresses below.
+    </div>
+
+    <!-- Collapsible override drawer (hidden by default for regular players) -->
+    <div id="cfg-drawer" class="hidden" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <div class="config-grid">
+        <div>
+          <div class="config-label" id="cfg-label-token">Token</div>
+          <input class="config-input" id="cfg-cball" placeholder="0x…" />
+        </div>
+        <div>
+          <div class="config-label" id="cfg-label-miner">Miner</div>
+          <input class="config-input" id="cfg-miner" placeholder="0x…" />
+        </div>
+        <div>
+          <div class="config-label" id="cfg-label-badge">Badge</div>
+          <input class="config-input" id="cfg-badge" placeholder="0x…" />
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="saveConfig()">Save & Apply</button>
+        <button class="btn btn-sm" onclick="clearOverride()">Reset to defaults</button>
+        <span style="font-size:12px;color:var(--text3);">Overrides are saved in your browser only.</span>
+      </div>
     </div>
   </div>
 
@@ -952,6 +972,10 @@ const BADGE_ABI = [
 
 // ════════════════════════════════════════════════════════════════
 //  Chain registry — brand colours + identity per network
+//  ── HOW TO DEPLOY ──────────────────────────────────────────────
+//  After running deploy_celominer.py, paste the three addresses
+//  from deployment.json into the matching chain entry below.
+//  Players will get them automatically — no manual input needed.
 // ════════════════════════════════════════════════════════════════
 const CHAINS = {
   42220: {
@@ -961,7 +985,9 @@ const CHAINS = {
             bg:"#07100a",bg2:"#0d1d11",bg3:"#132718",
             text2:"#72b88a",text3:"#3a5e47",glow:"rgba(53,208,127,0.16)" },
     minerName:"CeloMiner", tokenSymbol:"cBALL", badgeName:"CeloBadge",
-    appTitle:"CeloMiner", logoEmoji:"🌿"
+    appTitle:"CeloMiner", logoEmoji:"🌿",
+    // ↓ Paste your deployed addresses here after running deploy_celominer.py
+    contracts:{ token:"", miner:"", badge:"" }
   },
   44787: {
     name:"Celo Alfajores", short:"Alfajores", icon:"🌱",
@@ -970,7 +996,8 @@ const CHAINS = {
             bg:"#07100a",bg2:"#0d1d11",bg3:"#132718",
             text2:"#72b88a",text3:"#3a5e47",glow:"rgba(53,208,127,0.16)" },
     minerName:"CeloMiner", tokenSymbol:"cBALL", badgeName:"CeloBadge",
-    appTitle:"CeloMiner · Testnet", logoEmoji:"🌱"
+    appTitle:"CeloMiner · Testnet", logoEmoji:"🌱",
+    contracts:{ token:"0xfa83D5f40425Cdb7139855b3641869D003b0E8ab", miner:"0x1f22f19a18038D9FB2b51BFb0878227f1926233f", badge:"0xc516406230FF9AdD7138808Df3948636aeAaC44c" }
   },
   1: {
     name:"Ethereum Mainnet", short:"Ethereum", icon:"◆",
@@ -979,7 +1006,8 @@ const CHAINS = {
             bg:"#0b0b14",bg2:"#12121f",bg3:"#191929",
             text2:"#8088b4",text3:"#454a6a",glow:"rgba(98,126,234,0.16)" },
     minerName:"EthMiner", tokenSymbol:"eBall", badgeName:"EthBadge",
-    appTitle:"EthMiner", logoEmoji:"◆"
+    appTitle:"EthMiner", logoEmoji:"◆",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   11155111: {
     name:"Sepolia Testnet", short:"Sepolia", icon:"🔷",
@@ -988,7 +1016,8 @@ const CHAINS = {
             bg:"#0b0b14",bg2:"#12121f",bg3:"#191929",
             text2:"#8088b4",text3:"#454a6a",glow:"rgba(98,126,234,0.16)" },
     minerName:"EthMiner", tokenSymbol:"eBall", badgeName:"EthBadge",
-    appTitle:"EthMiner · Testnet", logoEmoji:"🔷"
+    appTitle:"EthMiner · Testnet", logoEmoji:"🔷",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   8453: {
     name:"Base", short:"Base", icon:"🔵",
@@ -997,7 +1026,8 @@ const CHAINS = {
             bg:"#070a14",bg2:"#0c1120",bg3:"#10182e",
             text2:"#6080c0",text3:"#364870",glow:"rgba(0,82,255,0.18)" },
     minerName:"BaseMiner", tokenSymbol:"bBall", badgeName:"BaseBadge",
-    appTitle:"BaseMiner", logoEmoji:"🔵"
+    appTitle:"BaseMiner", logoEmoji:"🔵",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   84532: {
     name:"Base Sepolia", short:"Base Testnet", icon:"🔹",
@@ -1006,7 +1036,8 @@ const CHAINS = {
             bg:"#070a14",bg2:"#0c1120",bg3:"#10182e",
             text2:"#6080c0",text3:"#364870",glow:"rgba(0,82,255,0.18)" },
     minerName:"BaseMiner", tokenSymbol:"bBall", badgeName:"BaseBadge",
-    appTitle:"BaseMiner · Testnet", logoEmoji:"🔹"
+    appTitle:"BaseMiner · Testnet", logoEmoji:"🔹",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   42161: {
     name:"Arbitrum One", short:"Arbitrum", icon:"🌀",
@@ -1015,7 +1046,8 @@ const CHAINS = {
             bg:"#07101a",bg2:"#0d1825",bg3:"#112032",
             text2:"#5898c0",text3:"#305870",glow:"rgba(40,160,240,0.17)" },
     minerName:"ArbMiner", tokenSymbol:"aBall", badgeName:"ArbBadge",
-    appTitle:"ArbMiner", logoEmoji:"🌀"
+    appTitle:"ArbMiner", logoEmoji:"🌀",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   421614: {
     name:"Arbitrum Sepolia", short:"Arb Testnet", icon:"💧",
@@ -1024,7 +1056,8 @@ const CHAINS = {
             bg:"#07101a",bg2:"#0d1825",bg3:"#112032",
             text2:"#5898c0",text3:"#305870",glow:"rgba(40,160,240,0.17)" },
     minerName:"ArbMiner", tokenSymbol:"aBall", badgeName:"ArbBadge",
-    appTitle:"ArbMiner · Testnet", logoEmoji:"💧"
+    appTitle:"ArbMiner · Testnet", logoEmoji:"💧",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   137: {
     name:"Polygon", short:"Polygon", icon:"⬡",
@@ -1033,7 +1066,8 @@ const CHAINS = {
             bg:"#0b0814",bg2:"#13101e",bg3:"#1a1428",
             text2:"#9070c0",text3:"#503868",glow:"rgba(130,71,229,0.17)" },
     minerName:"PolyMiner", tokenSymbol:"pBall", badgeName:"PolyBadge",
-    appTitle:"PolyMiner", logoEmoji:"⬡"
+    appTitle:"PolyMiner", logoEmoji:"⬡",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   80002: {
     name:"Polygon Amoy", short:"Amoy", icon:"🔮",
@@ -1042,7 +1076,8 @@ const CHAINS = {
             bg:"#0b0814",bg2:"#13101e",bg3:"#1a1428",
             text2:"#9070c0",text3:"#503868",glow:"rgba(130,71,229,0.17)" },
     minerName:"PolyMiner", tokenSymbol:"pBall", badgeName:"PolyBadge",
-    appTitle:"PolyMiner · Testnet", logoEmoji:"🔮"
+    appTitle:"PolyMiner · Testnet", logoEmoji:"🔮",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   10: {
     name:"Optimism", short:"Optimism", icon:"🔴",
@@ -1051,7 +1086,8 @@ const CHAINS = {
             bg:"#130508",bg2:"#1e090c",bg3:"#280e12",
             text2:"#b85060",text3:"#6e2a34",glow:"rgba(255,4,32,0.15)" },
     minerName:"OptMiner", tokenSymbol:"oBall", badgeName:"OptBadge",
-    appTitle:"OptMiner", logoEmoji:"🔴"
+    appTitle:"OptMiner", logoEmoji:"🔴",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   11155420: {
     name:"OP Sepolia", short:"OP Testnet", icon:"🟥",
@@ -1060,7 +1096,8 @@ const CHAINS = {
             bg:"#130508",bg2:"#1e090c",bg3:"#280e12",
             text2:"#b85060",text3:"#6e2a34",glow:"rgba(255,4,32,0.15)" },
     minerName:"OptMiner", tokenSymbol:"oBall", badgeName:"OptBadge",
-    appTitle:"OptMiner · Testnet", logoEmoji:"🟥"
+    appTitle:"OptMiner · Testnet", logoEmoji:"🟥",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   43114: {
     name:"Avalanche C-Chain", short:"Avalanche", icon:"🏔",
@@ -1069,7 +1106,8 @@ const CHAINS = {
             bg:"#120707",bg2:"#1c0e0e",bg3:"#261313",
             text2:"#b86060",text3:"#703030",glow:"rgba(232,65,66,0.16)" },
     minerName:"AvaxMiner", tokenSymbol:"avBall", badgeName:"AvaxBadge",
-    appTitle:"AvaxMiner", logoEmoji:"🏔"
+    appTitle:"AvaxMiner", logoEmoji:"🏔",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   56: {
     name:"BNB Smart Chain", short:"BNB Chain", icon:"◉",
@@ -1078,7 +1116,8 @@ const CHAINS = {
             bg:"#0f0d02",bg2:"#191503",bg3:"#221d05",
             text2:"#b09830",text3:"#685810",glow:"rgba(240,185,11,0.15)" },
     minerName:"BNBMiner", tokenSymbol:"bnBall", badgeName:"BNBBadge",
-    appTitle:"BNBMiner", logoEmoji:"◉"
+    appTitle:"BNBMiner", logoEmoji:"◉",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   59144: {
     name:"Linea", short:"Linea", icon:"∞",
@@ -1087,7 +1126,8 @@ const CHAINS = {
             bg:"#070b10",bg2:"#0c131c",bg3:"#101c28",
             text2:"#50a0bc",text3:"#2c5870",glow:"rgba(97,223,255,0.14)" },
     minerName:"LineaMiner", tokenSymbol:"lBall", badgeName:"LineaBadge",
-    appTitle:"LineaMiner", logoEmoji:"∞"
+    appTitle:"LineaMiner", logoEmoji:"∞",
+    contracts:{ token:"", miner:"", badge:"" }
   },
   324: {
     name:"zkSync Era", short:"zkSync", icon:"⚡",
@@ -1096,7 +1136,8 @@ const CHAINS = {
             bg:"#070a14",bg2:"#0c1120",bg3:"#10192e",
             text2:"#5880c8",text3:"#304070",glow:"rgba(23,85,244,0.18)" },
     minerName:"zkMiner", tokenSymbol:"zBall", badgeName:"zkBadge",
-    appTitle:"zkMiner", logoEmoji:"⚡"
+    appTitle:"zkMiner", logoEmoji:"⚡",
+    contracts:{ token:"", miner:"", badge:"" }
   }
 };
 
@@ -1148,14 +1189,43 @@ window.addEventListener('load', () => {
 function loadStoredConfig() {
   try {
     const s = localStorage.getItem('cm_cfg');
-    if (!s) return;
-    const c = JSON.parse(s);
-    cfg = c;
-    document.getElementById('cfg-cball').value = c.cball || '';
-    document.getElementById('cfg-miner').value = c.miner || '';
-    document.getElementById('cfg-badge').value = c.badge || '';
-    selectedChainId = c.chainId || 42220;
+    if (s) {
+      const c = JSON.parse(s);
+      cfg = c;
+      selectedChainId = c.chainId || 42220;
+    }
   } catch(e) {}
+  // Always seed addresses from CHAINS registry for the current chain,
+  // then overlay any localStorage overrides on top.
+  applyChainAddresses(selectedChainId);
+}
+
+// Pull addresses from CHAINS registry for a given chain and merge with any
+// localStorage overrides. localStorage wins so the deployer can test overrides.
+function applyChainAddresses(chainId) {
+  const chain   = CHAINS[chainId];
+  const stored  = (() => { try { return JSON.parse(localStorage.getItem('cm_cfg')) || {}; } catch(e) { return {}; } })();
+
+  const token = (chainId === (stored.chainId || chainId) && stored.cball) || chain?.contracts?.token || '';
+  const miner = (chainId === (stored.chainId || chainId) && stored.miner) || chain?.contracts?.miner || '';
+  const badge = (chainId === (stored.chainId || chainId) && stored.badge) || chain?.contracts?.badge || '';
+
+  cfg.cball = token;
+  cfg.miner = miner;
+  cfg.badge = badge;
+
+  // Update the input fields
+  const ti = document.getElementById('cfg-cball');
+  const mi = document.getElementById('cfg-miner');
+  const bi = document.getElementById('cfg-badge');
+  if (ti) ti.value = token;
+  if (mi) mi.value = miner;
+  if (bi) bi.value = badge;
+
+  // Show/hide the "no addresses" warning in the config drawer
+  const hasAll = token && miner && badge;
+  const warn   = document.getElementById('cfg-no-addresses');
+  if (warn) warn.classList.toggle('hidden', !!hasAll);
 }
 
 function saveConfig() {
@@ -1166,9 +1236,12 @@ function saveConfig() {
   localStorage.setItem('cm_cfg', JSON.stringify(cfg));
   const st = document.getElementById('config-status');
   st.textContent = '✓ Saved';
-  setTimeout(() => st.textContent = '', 2000);
+  setTimeout(() => st.textContent = '', 2500);
+  // Collapse the drawer after saving
+  const drawer = document.getElementById('cfg-drawer');
+  if (drawer) drawer.classList.add('hidden');
   initContracts();
-  toast('Addresses applied', CHAINS[selectedChainId]?.minerName || 'Contracts set.', 'success');
+  toast('Addresses saved', CHAINS[selectedChainId]?.minerName + ' contracts applied.', 'success');
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1310,6 +1383,7 @@ function selectChain(id) {
   cfg.chainId = selectedChainId;
   localStorage.setItem('cm_cfg', JSON.stringify(cfg));
   applyChainTheme(selectedChainId);
+  applyChainAddresses(selectedChainId);
   updateChainBadge();
   renderChainList();
   document.getElementById('chain-modal').classList.add('hidden');
@@ -1372,6 +1446,7 @@ async function checkNetworkMatch() {
     if (CHAINS[wid]) {
       selectedChainId = wid;
       applyChainTheme(wid);
+      applyChainAddresses(wid);
       updateChainBadge();
       renderChainList();
     }
@@ -1790,6 +1865,23 @@ async function sendTx(fn, label, successMsg) {
   } catch(e) {
     toast(label + ' failed', e.reason || e.message, 'error');
   }
+}
+
+function toggleCfgDrawer() {
+  const drawer = document.getElementById('cfg-drawer');
+  const btn    = document.getElementById('cfg-toggle-btn');
+  const hidden = drawer.classList.toggle('hidden');
+  btn.textContent = hidden ? 'Override addresses' : 'Close';
+}
+
+function clearOverride() {
+  localStorage.removeItem('cm_cfg');
+  cfg = { cball:'', miner:'', badge:'', chainId: selectedChainId };
+  applyChainAddresses(selectedChainId);
+  document.getElementById('cfg-drawer').classList.add('hidden');
+  document.getElementById('cfg-toggle-btn').textContent = 'Override addresses';
+  initContracts();
+  toast('Reset', 'Using built-in addresses for this network.', 'info');
 }
 
 function switchTab(name) {
