@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#07100a" />
 <meta name="talentapp:project_verification" content="844641f80aba9b5074ff4bb1d834b8b8a30c0143b8c4ab544010f9021a7580255653d4aa0f0be9d59cea98d8deb8e193a8cefa7df5245b6578fd5efeba938ad6" />
 <title>ChainMiner</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
@@ -299,40 +302,7 @@
     transition: color .3s;
   }
 
-  /* ── Chain selector modal ── */
-  .overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,.65);
-    display: flex; align-items: center; justify-content: center; z-index: 200;
-  }
-  .overlay.hidden { display: none; }
-  .modal {
-    background: var(--bg2); border: 1px solid var(--border2);
-    border-radius: var(--radius); padding: 24px; width: 360px; max-width: 95vw;
-    position: relative; overflow: hidden;
-    transition: background .45s ease;
-  }
-  .modal-strip {
-    position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: var(--accent); transition: background .45s ease;
-  }
-  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; margin-top: 4px; }
-  .modal-sub   { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
-  .chain-list  { display: flex; flex-direction: column; gap: 6px; max-height: 65vh; overflow-y: auto; padding-right: 2px; }
-  .chain-list::-webkit-scrollbar { width: 4px; }
-  .chain-list::-webkit-scrollbar-track { background: transparent; }
-  .chain-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
-  .chain-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 11px 13px; border-radius: var(--radius-sm);
-    border: 1px solid var(--border); cursor: pointer; transition: all .15s;
-  }
-  .chain-item:hover { border-color: var(--accent); background: var(--bg3); }
-  .chain-item.active { border-color: var(--accent); }
-  .chain-item-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
-  .chain-item-name { font-weight: 600; font-size: 13px; }
-  .chain-item-sub  { font-size: 11px; color: var(--text3); margin-top: 1px; }
-  .chain-item-check { margin-left: auto; font-size: 14px; opacity: 0; transition: opacity .15s; }
-  .chain-item.active .chain-item-check { opacity: 1; }
+  /* Chain selector modal removed — Celo only */
 
   /* ── Toast ── */
   #toast-wrap {
@@ -423,18 +393,7 @@
 </head>
 <body>
 
-<!-- ── Chain Selector Modal ── -->
-<div class="overlay hidden" id="chain-modal">
-  <div class="modal">
-    <div class="modal-strip" id="modal-strip"></div>
-    <div class="modal-title">Select Network</div>
-    <div class="modal-sub" id="modal-sub">Choose the network where contracts are deployed.</div>
-    <div class="chain-list" id="chain-list"></div>
-    <div style="margin-top:14px;display:flex;justify-content:flex-end;">
-      <button class="btn btn-sm" onclick="document.getElementById('chain-modal').classList.add('hidden')">Close</button>
-    </div>
-  </div>
-</div>
+<!-- Chain modal removed — Celo only -->
 
 <!-- ── Topbar ── -->
 <div class="topbar">
@@ -445,10 +404,10 @@
     <span class="minipay-badge hidden" id="minipay-badge">MiniPay</span>
   </div>
   <div class="topbar-right">
-    <button class="chain-badge" onclick="openChainModal()" id="chain-badge-btn">
+    <div class="chain-badge" id="chain-badge-btn" style="cursor:default;">
       <div class="chain-dot" id="chain-dot" style="background:var(--red)"></div>
-      <span id="chain-name-label">No Network</span>
-    </button>
+      <span id="chain-name-label">Celo</span>
+    </div>
     <button class="wallet-btn" id="wallet-btn" onclick="connectWallet()">
       <div class="wallet-avatar" id="wallet-avatar"></div>
       <span id="wallet-label">Connect Wallet</span>
@@ -469,6 +428,11 @@
 
 <!-- ── Main ── -->
 <div class="main">
+
+  <!-- No wallet detected notice (shown in plain browser, hidden in MiniPay) -->
+  <div class="notice warn hidden" id="no-wallet-notice" style="margin-bottom:16px;">
+    🦁 Open this page inside <strong>MiniPay</strong> (or connect MetaMask on Celo Mainnet) to play.
+  </div>
 
   <!-- Contract Addresses — auto-loaded from CHAINS registry -->
   <div class="config-card" id="config-section">
@@ -513,10 +477,7 @@
     </div>
   </div>
 
-  <!-- Network mismatch warning -->
-  <div class="notice warn hidden" id="network-warn">
-    ⚠️ Your wallet is on a different network than selected. Switch networks in your wallet or choose the matching network above.
-  </div>
+  <!-- Celo-only: no network mismatch possible -->
 
   <!-- Tabs -->
   <div class="tabs">
@@ -1000,6 +961,10 @@ const BADGE_ABI = [
 //  from deployment.json into the matching chain entry below.
 //  Players will get them automatically — no manual input needed.
 // ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+//  Celo-only — hardcoded. No other chains supported.
+// ════════════════════════════════════════════════════════════════
+const CELO_CHAIN_ID = 42220;
 const CHAINS = {
   42220: {
     name:"Celo Mainnet", short:"Celo", icon:"🌿",
@@ -1009,158 +974,7 @@ const CHAINS = {
             text2:"#72b88a",text3:"#3a5e47",glow:"rgba(53,208,127,0.16)" },
     minerName:"CeloMiner", tokenSymbol:"cBALL", badgeName:"CeloBadge",
     appTitle:"CeloMiner", logoEmoji:"🌿",
-    // ↓ Paste your deployed addresses here after running deploy_celominer.py
     contracts:{ token:"0xfa83D5f40425Cdb7139855b3641869D003b0E8ab", miner:"0x1f22f19a18038D9FB2b51BFb0878227f1926233f", badge:"0xc516406230FF9AdD7138808Df3948636aeAaC44c" }
-  },
-  44787: {
-    name:"Celo Alfajores", short:"Alfajores", icon:"🌱",
-    rpc:"https://alfajores-forno.celo-testnet.org", explorer:"https://alfajores.celoscan.io",
-    theme:{ accent:"#35D07F",accent2:"#52e89a",accentRgb:"53,208,127",
-            bg:"#07100a",bg2:"#0d1d11",bg3:"#132718",
-            text2:"#72b88a",text3:"#3a5e47",glow:"rgba(53,208,127,0.16)" },
-    minerName:"CeloMiner", tokenSymbol:"cBALL", badgeName:"CeloBadge",
-    appTitle:"CeloMiner · Testnet", logoEmoji:"🌱",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  1: {
-    name:"Ethereum Mainnet", short:"Ethereum", icon:"◆",
-    rpc:"https://cloudflare-eth.com", explorer:"https://etherscan.io",
-    theme:{ accent:"#627EEA",accent2:"#8198ee",accentRgb:"98,126,234",
-            bg:"#0b0b14",bg2:"#12121f",bg3:"#191929",
-            text2:"#8088b4",text3:"#454a6a",glow:"rgba(98,126,234,0.16)" },
-    minerName:"EthMiner", tokenSymbol:"eBall", badgeName:"EthBadge",
-    appTitle:"EthMiner", logoEmoji:"◆",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  11155111: {
-    name:"Sepolia Testnet", short:"Sepolia", icon:"🔷",
-    rpc:"https://rpc.sepolia.org", explorer:"https://sepolia.etherscan.io",
-    theme:{ accent:"#627EEA",accent2:"#8198ee",accentRgb:"98,126,234",
-            bg:"#0b0b14",bg2:"#12121f",bg3:"#191929",
-            text2:"#8088b4",text3:"#454a6a",glow:"rgba(98,126,234,0.16)" },
-    minerName:"EthMiner", tokenSymbol:"eBall", badgeName:"EthBadge",
-    appTitle:"EthMiner · Testnet", logoEmoji:"🔷",
-    contracts:{ token:"0x04E1D6902035b93C9ae3DBcb794a0a2cD2dD80d3", miner:"0x1EF1A04920a84A13a274788483AF8099aDF6e1C0", badge:"0xa479B1913B7d1c9DecB88Fd6b0a068Be68F9C800" }
-  },
-  8453: {
-    name:"Base", short:"Base", icon:"🔵",
-    rpc:"https://mainnet.base.org", explorer:"https://basescan.org",
-    theme:{ accent:"#0052FF",accent2:"#3375ff",accentRgb:"0,82,255",
-            bg:"#070a14",bg2:"#0c1120",bg3:"#10182e",
-            text2:"#6080c0",text3:"#364870",glow:"rgba(0,82,255,0.18)" },
-    minerName:"BaseMiner", tokenSymbol:"bBall", badgeName:"BaseBadge",
-    appTitle:"BaseMiner", logoEmoji:"🔵",
-    contracts:{ token:"0xbC10aFbFDEfa1B7beB1CB6BA024A67AB51AA963D", miner:"0x7EcB8FB91CB91EF22e7ff86799a59D740A197648", badge:"0x208c4EeDD462B72430D7301CcCe91771a10F5AD2" }
-  },
-  84532: {
-    name:"Base Sepolia", short:"Base Testnet", icon:"🔹",
-    rpc:"https://sepolia.base.org", explorer:"https://sepolia.basescan.org",
-    theme:{ accent:"#0052FF",accent2:"#3375ff",accentRgb:"0,82,255",
-            bg:"#070a14",bg2:"#0c1120",bg3:"#10182e",
-            text2:"#6080c0",text3:"#364870",glow:"rgba(0,82,255,0.18)" },
-    minerName:"BaseMiner", tokenSymbol:"bBall", badgeName:"BaseBadge",
-    appTitle:"BaseMiner · Testnet", logoEmoji:"🔹",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  42161: {
-    name:"Arbitrum One", short:"Arbitrum", icon:"🌀",
-    rpc:"https://arb1.arbitrum.io/rpc", explorer:"https://arbiscan.io",
-    theme:{ accent:"#28A0F0",accent2:"#56b8f5",accentRgb:"40,160,240",
-            bg:"#07101a",bg2:"#0d1825",bg3:"#112032",
-            text2:"#5898c0",text3:"#305870",glow:"rgba(40,160,240,0.17)" },
-    minerName:"ArbMiner", tokenSymbol:"aBall", badgeName:"ArbBadge",
-    appTitle:"ArbMiner", logoEmoji:"🌀",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  421614: {
-    name:"Arbitrum Sepolia", short:"Arb Testnet", icon:"💧",
-    rpc:"https://sepolia-rollup.arbitrum.io/rpc", explorer:"https://sepolia.arbiscan.io",
-    theme:{ accent:"#28A0F0",accent2:"#56b8f5",accentRgb:"40,160,240",
-            bg:"#07101a",bg2:"#0d1825",bg3:"#112032",
-            text2:"#5898c0",text3:"#305870",glow:"rgba(40,160,240,0.17)" },
-    minerName:"ArbMiner", tokenSymbol:"aBall", badgeName:"ArbBadge",
-    appTitle:"ArbMiner · Testnet", logoEmoji:"💧",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  137: {
-    name:"Polygon", short:"Polygon", icon:"⬡",
-    rpc:"https://polygon-rpc.com", explorer:"https://polygonscan.com",
-    theme:{ accent:"#8247E5",accent2:"#a36cec",accentRgb:"130,71,229",
-            bg:"#0b0814",bg2:"#13101e",bg3:"#1a1428",
-            text2:"#9070c0",text3:"#503868",glow:"rgba(130,71,229,0.17)" },
-    minerName:"PolyMiner", tokenSymbol:"pBall", badgeName:"PolyBadge",
-    appTitle:"PolyMiner", logoEmoji:"⬡",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  80002: {
-    name:"Polygon Amoy", short:"Amoy", icon:"🔮",
-    rpc:"https://rpc-amoy.polygon.technology", explorer:"https://amoy.polygonscan.com",
-    theme:{ accent:"#8247E5",accent2:"#a36cec",accentRgb:"130,71,229",
-            bg:"#0b0814",bg2:"#13101e",bg3:"#1a1428",
-            text2:"#9070c0",text3:"#503868",glow:"rgba(130,71,229,0.17)" },
-    minerName:"PolyMiner", tokenSymbol:"pBall", badgeName:"PolyBadge",
-    appTitle:"PolyMiner · Testnet", logoEmoji:"🔮",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  10: {
-    name:"Optimism", short:"Optimism", icon:"🔴",
-    rpc:"https://mainnet.optimism.io", explorer:"https://optimistic.etherscan.io",
-    theme:{ accent:"#FF0420",accent2:"#ff3d54",accentRgb:"255,4,32",
-            bg:"#130508",bg2:"#1e090c",bg3:"#280e12",
-            text2:"#b85060",text3:"#6e2a34",glow:"rgba(255,4,32,0.15)" },
-    minerName:"OptMiner", tokenSymbol:"oBall", badgeName:"OptBadge",
-    appTitle:"OptMiner", logoEmoji:"🔴",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  11155420: {
-    name:"OP Sepolia", short:"OP Testnet", icon:"🟥",
-    rpc:"https://sepolia.optimism.io", explorer:"https://sepolia-optimism.etherscan.io",
-    theme:{ accent:"#FF0420",accent2:"#ff3d54",accentRgb:"255,4,32",
-            bg:"#130508",bg2:"#1e090c",bg3:"#280e12",
-            text2:"#b85060",text3:"#6e2a34",glow:"rgba(255,4,32,0.15)" },
-    minerName:"OptMiner", tokenSymbol:"oBall", badgeName:"OptBadge",
-    appTitle:"OptMiner · Testnet", logoEmoji:"🟥",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  43114: {
-    name:"Avalanche C-Chain", short:"Avalanche", icon:"🏔",
-    rpc:"https://api.avax.network/ext/bc/C/rpc", explorer:"https://snowtrace.io",
-    theme:{ accent:"#E84142",accent2:"#f06062",accentRgb:"232,65,66",
-            bg:"#120707",bg2:"#1c0e0e",bg3:"#261313",
-            text2:"#b86060",text3:"#703030",glow:"rgba(232,65,66,0.16)" },
-    minerName:"AvaxMiner", tokenSymbol:"avBall", badgeName:"AvaxBadge",
-    appTitle:"AvaxMiner", logoEmoji:"🏔",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  56: {
-    name:"BNB Smart Chain", short:"BNB Chain", icon:"◉",
-    rpc:"https://bsc-dataseed.binance.org", explorer:"https://bscscan.com",
-    theme:{ accent:"#F0B90B",accent2:"#f5cc40",accentRgb:"240,185,11",
-            bg:"#0f0d02",bg2:"#191503",bg3:"#221d05",
-            text2:"#b09830",text3:"#685810",glow:"rgba(240,185,11,0.15)" },
-    minerName:"BNBMiner", tokenSymbol:"bnBall", badgeName:"BNBBadge",
-    appTitle:"BNBMiner", logoEmoji:"◉",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  59144: {
-    name:"Linea", short:"Linea", icon:"∞",
-    rpc:"https://rpc.linea.build", explorer:"https://lineascan.build",
-    theme:{ accent:"#61DFFF",accent2:"#8eeaff",accentRgb:"97,223,255",
-            bg:"#070b10",bg2:"#0c131c",bg3:"#101c28",
-            text2:"#50a0bc",text3:"#2c5870",glow:"rgba(97,223,255,0.14)" },
-    minerName:"LineaMiner", tokenSymbol:"lBall", badgeName:"LineaBadge",
-    appTitle:"LineaMiner", logoEmoji:"∞",
-    contracts:{ token:"", miner:"", badge:"" }
-  },
-  324: {
-    name:"zkSync Era", short:"zkSync", icon:"⚡",
-    rpc:"https://mainnet.era.zksync.io", explorer:"https://explorer.zksync.io",
-    theme:{ accent:"#1755F4",accent2:"#4474f8",accentRgb:"23,85,244",
-            bg:"#070a14",bg2:"#0c1120",bg3:"#10192e",
-            text2:"#5880c8",text3:"#304070",glow:"rgba(23,85,244,0.18)" },
-    minerName:"zkMiner", tokenSymbol:"zBall", badgeName:"zkBadge",
-    appTitle:"zkMiner", logoEmoji:"⚡",
-    contracts:{ token:"", miner:"", badge:"" }
   }
 };
 
@@ -1168,9 +982,9 @@ const CHAINS = {
 //  App state
 // ════════════════════════════════════════════════════════════════
 let provider = null, signer = null, address = null;
-let selectedChainId = 42220;
+let selectedChainId = CELO_CHAIN_ID;
 let contracts = { cball:null, miner:null, badge:null };
-let cfg = { cball:'', miner:'', badge:'', chainId:42220 };
+let cfg = { cball:'', miner:'', badge:'', chainId: CELO_CHAIN_ID };
 
 const TOOL_NAMES  = ['Pickaxe','Drill','Excavator'];
 const TOOL_EMOJIS = ['⛏️','🔩','🏗️'];
@@ -1184,9 +998,10 @@ const isMiniPay = () => !!(window.ethereum && window.ethereum.isMiniPay);
 //  Init
 // ════════════════════════════════════════════════════════════════
 window.addEventListener('load', async () => {
+  // Always Celo — no chain selection needed
+  selectedChainId = CELO_CHAIN_ID;
   loadStoredConfig();
-  applyChainTheme(selectedChainId);
-  renderChainList();
+  applyChainTheme(CELO_CHAIN_ID);
   updateChainBadge();
 
   if (window.ethereum) {
@@ -1195,49 +1010,47 @@ window.addEventListener('load', async () => {
       updateWalletUI();
       if (address) initContracts();
     });
+    // Ignore chainChanged — we only run on Celo. If user switches away, show warning.
     window.ethereum.on('chainChanged', hex => {
       const id = parseInt(hex, 16);
-      if (CHAINS[id]) {
-        selectedChainId = id;
-        cfg.chainId = id;
-        localStorage.setItem('cm_cfg', JSON.stringify(cfg));
-        applyChainTheme(id);
-        applyChainAddresses(id);
-        updateChainBadge();
-        renderChainList();
-        if (provider) checkNetworkMatch();
-        initContracts();
-      } else {
-        window.location.reload();
+      if (id !== CELO_CHAIN_ID) {
+        document.getElementById('network-warn') && document.getElementById('network-warn').classList.remove('hidden');
       }
     });
 
-    // MiniPay: auto-connect silently on load — no prompt or button needed
+    // MiniPay: window.ethereum.isMiniPay is set — auto-connect silently, no button needed
     if (isMiniPay()) {
       await autoConnectMiniPay();
     }
+    // Non-MiniPay: try silent re-connect if user was previously connected (no prompt)
+    else {
+      try {
+        const accs = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accs && accs[0]) {
+          address  = accs[0];
+          provider = new ethers.BrowserProvider(window.ethereum);
+          signer   = await provider.getSigner();
+          updateWalletUI();
+          await checkNetworkMatch();
+          initContracts();
+        }
+      } catch(e) { /* silent */ }
+    }
+  } else {
+    // No injected provider — show install prompt
+    const notice = document.getElementById('no-wallet-notice');
+    if (notice) notice.classList.remove('hidden');
   }
 });
 
 async function autoConnectMiniPay() {
   try {
-    // MiniPay is Celo-only — force Celo mainnet theme and addresses
-    selectedChainId = 42220;
-    cfg.chainId     = 42220;
-    applyChainTheme(42220);
-    applyChainAddresses(42220);
-    updateChainBadge();
-    renderChainList();
-
     // Show MiniPay badge in topbar
     const badge = document.getElementById('minipay-badge');
     if (badge) badge.classList.remove('hidden');
-    // Hide the connect-wallet button — implicit in MiniPay
+    // Hide connect-wallet button — MiniPay handles wallet implicitly
     const wbtn = document.getElementById('wallet-btn');
     if (wbtn) wbtn.style.display = 'none';
-    // Hide chain switcher — MiniPay only runs on Celo
-    const cbtn = document.getElementById('chain-badge-btn');
-    if (cbtn) cbtn.style.display = 'none';
 
     const accs = await window.ethereum.request({ method: 'eth_requestAccounts' });
     address  = accs[0];
@@ -1245,7 +1058,6 @@ async function autoConnectMiniPay() {
     signer   = await provider.getSigner();
     updateWalletUI();
     initContracts();
-    toast('MiniPay connected', shortAddr(address), 'success');
   } catch(e) {
     toast('MiniPay connect failed', e.message, 'error');
   }
@@ -1257,12 +1069,12 @@ function loadStoredConfig() {
     if (s) {
       const c = JSON.parse(s);
       cfg = c;
-      selectedChainId = c.chainId || 42220;
     }
   } catch(e) {}
-  // Always seed addresses from CHAINS registry for the current chain,
-  // then overlay any localStorage overrides on top.
-  applyChainAddresses(selectedChainId);
+  // Always Celo
+  selectedChainId = CELO_CHAIN_ID;
+  cfg.chainId     = CELO_CHAIN_ID;
+  applyChainAddresses(CELO_CHAIN_ID);
 }
 
 // Pull addresses from CHAINS registry for a given chain and merge with any
@@ -1297,23 +1109,22 @@ function saveConfig() {
   cfg.cball   = document.getElementById('cfg-cball').value.trim();
   cfg.miner   = document.getElementById('cfg-miner').value.trim();
   cfg.badge   = document.getElementById('cfg-badge').value.trim();
-  cfg.chainId = selectedChainId;
+  cfg.chainId = CELO_CHAIN_ID;
   localStorage.setItem('cm_cfg', JSON.stringify(cfg));
   const st = document.getElementById('config-status');
   st.textContent = '✓ Saved';
   setTimeout(() => st.textContent = '', 2500);
-  // Collapse the drawer after saving
   const drawer = document.getElementById('cfg-drawer');
   if (drawer) drawer.classList.add('hidden');
   initContracts();
-  toast('Addresses saved', CHAINS[selectedChainId]?.minerName + ' contracts applied.', 'success');
+  toast('Addresses saved', 'CeloMiner contracts applied.', 'success');
 }
 
 // ════════════════════════════════════════════════════════════════
 //  Theme + Identity
 // ════════════════════════════════════════════════════════════════
 function applyChainTheme(id) {
-  const c = CHAINS[id];
+  const c = CHAINS[id] || CHAINS[CELO_CHAIN_ID];
   if (!c) return;
   const t = c.theme;
   const r = document.documentElement;
@@ -1329,11 +1140,10 @@ function applyChainTheme(id) {
   r.style.setProperty('--chain-glow', t.glow);
   document.body.style.backgroundColor = t.bg;
 
-  setText('topbar-accent',      null, t.accent, 'background');
-  setText('modal-strip',        null, t.accent, 'background');
-  setText('logo-icon',          c.logoEmoji);
+  setText('topbar-accent', null, t.accent, 'background');
+  setText('logo-icon',     c.logoEmoji);
   document.getElementById('logo-icon').style.background = t.accent;
-  setText('app-title',          c.appTitle);
+  setText('app-title', c.appTitle);
   document.title = c.appTitle;
 
   // Banner
@@ -1404,9 +1214,6 @@ function updateAllLabels(c) {
   setText('lbl-admin-miner-ownership',  'Transfer ' + mine + ' Ownership');
   setText('lbl-admin-badge-ownership',  'Transfer ' + badge + ' Ownership');
 
-  // Modal sub
-  setText('modal-sub', 'Choose the network where ' + mine + ' contracts are deployed.');
-
   // .tok-sym spans (game constants)
   document.querySelectorAll('.tok-sym').forEach(el => { el.textContent = sym; });
 }
@@ -1419,46 +1226,16 @@ function setText(id, text, val, prop) {
 }
 
 // ════════════════════════════════════════════════════════════════
-//  Chain UI
+//  Chain UI — Celo only, no switching
 // ════════════════════════════════════════════════════════════════
-function openChainModal() {
-  renderChainList();
-  document.getElementById('chain-modal').classList.remove('hidden');
-}
-
-function renderChainList() {
-  const el = document.getElementById('chain-list');
-  el.innerHTML = Object.entries(CHAINS).map(([id, c]) => {
-    const active = Number(id) === selectedChainId;
-    const acBg   = active ? `background:${c.theme.glow};` : '';
-    const acBd   = active ? `border-color:${c.theme.accent};` : '';
-    return `<div class="chain-item${active?' active':''}" onclick="selectChain(${id})" style="${acBg}${acBd}">
-      <div class="chain-item-icon">${c.icon}</div>
-      <div>
-        <div class="chain-item-name">${c.name}</div>
-        <div class="chain-item-sub">${c.minerName} · ${c.tokenSymbol} · ID ${id}</div>
-      </div>
-      <div class="chain-item-check" style="color:${c.theme.accent}">✓</div>
-    </div>`;
-  }).join('');
-}
-
-function selectChain(id) {
-  selectedChainId = Number(id);
-  cfg.chainId = selectedChainId;
-  localStorage.setItem('cm_cfg', JSON.stringify(cfg));
-  applyChainTheme(selectedChainId);
-  applyChainAddresses(selectedChainId);
-  updateChainBadge();
-  renderChainList();
-  document.getElementById('chain-modal').classList.add('hidden');
-  if (provider) checkNetworkMatch();
-  initContracts();
-}
+function openChainModal() { /* no-op: Celo only */ }
+function renderChainList() { /* no-op: Celo only */ }
+function selectChain(id)   { /* no-op: Celo only */ }
 
 function updateChainBadge() {
-  const c = CHAINS[selectedChainId];
-  document.getElementById('chain-name-label').textContent = c ? c.short : 'Chain ' + selectedChainId;
+  const c = CHAINS[CELO_CHAIN_ID];
+  const el = document.getElementById('chain-name-label');
+  if (el) el.textContent = c ? c.short : 'Celo';
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1476,7 +1253,8 @@ async function connectWallet() {
     provider = new ethers.BrowserProvider(window.ethereum);
     signer   = await provider.getSigner();
     updateWalletUI();
-    await checkNetworkMatch();
+    // Switch wallet to Celo if it isn't already
+    await ensureCeloNetwork();
     initContracts();
     toast('Wallet connected', shortAddr(address), 'success');
   } catch(e) {
@@ -1484,10 +1262,38 @@ async function connectWallet() {
   }
 }
 
+async function ensureCeloNetwork() {
+  try {
+    const net = await provider.getNetwork();
+    if (Number(net.chainId) === CELO_CHAIN_ID) return;
+    // Try to switch
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0xA4EC' }] // 42220
+      });
+    } catch(sw) {
+      // Chain not in wallet — add it
+      if (sw.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0xA4EC',
+            chainName: 'Celo Mainnet',
+            nativeCurrency: { name: 'CELO', symbol: 'CELO', decimals: 18 },
+            rpcUrls: ['https://forno.celo.org'],
+            blockExplorerUrls: ['https://celoscan.io']
+          }]
+        });
+      }
+    }
+  } catch(e) { console.warn('ensureCeloNetwork:', e); }
+}
+
 function updateWalletUI() {
   document.getElementById('wallet-label').textContent = address ? shortAddr(address) : 'Connect Wallet';
   const dot = document.getElementById('chain-dot');
-  const c   = CHAINS[selectedChainId];
+  const c   = CHAINS[CELO_CHAIN_ID];
   dot.style.background = address ? (c ? c.theme.accent : 'var(--green)') : 'var(--red)';
   // Hide admin tab immediately on disconnect; checkAdminAccess will show it if warranted
   if (!address) {
@@ -1498,25 +1304,19 @@ function updateWalletUI() {
 
 async function checkNetworkMatch() {
   if (!provider) return;
-  const net = await provider.getNetwork();
-  const wid = Number(net.chainId);
-  const mismatch = wid !== selectedChainId;
-  document.getElementById('network-warn').classList.toggle('hidden', !mismatch);
-  const dot = document.getElementById('chain-dot');
-  if (mismatch) {
-    dot.style.background = 'var(--amber)';
-  } else {
-    const c = CHAINS[selectedChainId];
-    dot.style.background = c ? c.theme.accent : 'var(--green)';
-    // Wallet is on a known chain — sync theme to wallet
-    if (CHAINS[wid]) {
-      selectedChainId = wid;
-      applyChainTheme(wid);
-      applyChainAddresses(wid);
-      updateChainBadge();
-      renderChainList();
+  try {
+    const net = await provider.getNetwork();
+    const wid = Number(net.chainId);
+    const ok  = wid === CELO_CHAIN_ID;
+    const dot = document.getElementById('chain-dot');
+    if (!ok) {
+      dot.style.background = 'var(--amber)';
+      toast('Wrong network', 'Please switch your wallet to Celo Mainnet.', 'warn');
+    } else {
+      const c = CHAINS[CELO_CHAIN_ID];
+      dot.style.background = c ? c.theme.accent : 'var(--green)';
     }
-  }
+  } catch(e) {}
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1582,9 +1382,9 @@ async function checkAdminAccess() {
   }
 
   // Build the header — ownership summary + per-contract chips
-  const sym   = CHAINS[selectedChainId]?.tokenSymbol || 'Token';
-  const mine  = CHAINS[selectedChainId]?.minerName   || 'Miner';
-  const badge = CHAINS[selectedChainId]?.badgeName   || 'Badge';
+  const sym   = CHAINS[CELO_CHAIN_ID]?.tokenSymbol || 'Token';
+  const mine  = CHAINS[CELO_CHAIN_ID]?.minerName   || 'Miner';
+  const badge = CHAINS[CELO_CHAIN_ID]?.badgeName   || 'Badge';
 
   function ownerChip(label, owner, isYou) {
     if (!owner) return '';
@@ -1626,7 +1426,7 @@ function lockSection(id, shouldLock) {
 // ════════════════════════════════════════════════════════════════
 async function refreshMineData() {
   if (!contracts.miner || !address) return;
-  const c = CHAINS[selectedChainId];
+  const c = CHAINS[CELO_CHAIN_ID];
   const sym = c ? c.tokenSymbol : '?';
   try {
     const [totalMined, clicks, tool, yieldPerClick] = await contracts.miner.getStats(address);
@@ -1668,12 +1468,12 @@ async function doMine() {
   if (!contracts.miner) { toast('No contract', 'Apply a Miner contract address first.','error'); return; }
   if (!address)          { toast('Not connected','Connect your wallet first.','error'); return; }
   const btn = document.getElementById('mine-btn');
-  const c   = CHAINS[selectedChainId];
+  const c   = CHAINS[CELO_CHAIN_ID];
   const sym = c ? c.tokenSymbol : '?';
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div>&nbsp;Mining…';
   try {
-    const overrides = await getMiniPayOverrides();
+    const overrides = await getLegacyOverrides();
     const tx = await contracts.miner.mine(overrides);
     toast('Transaction sent', txLink(tx.hash), 'info');
     await tx.wait();
@@ -1692,7 +1492,7 @@ async function doUpgrade() {
   const btn = document.getElementById('upgrade-btn');
   btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
   try {
-    const overrides = await getMiniPayOverrides();
+    const overrides = await getLegacyOverrides();
     const tx = await contracts.miner.upgrade(overrides);
     toast('Transaction sent', txLink(tx.hash), 'info');
     await tx.wait();
@@ -1707,7 +1507,7 @@ async function doUpgrade() {
 // ════════════════════════════════════════════════════════════════
 async function refreshTokenData() {
   if (!contracts.cball || !address) return;
-  const c = CHAINS[selectedChainId];
+  const c = CHAINS[CELO_CHAIN_ID];
   const sym = c ? c.tokenSymbol : '?';
   try {
     const [bal, supply, paused, minter, owner] = await Promise.all([
@@ -1731,7 +1531,7 @@ async function doTransfer() {
   const amt = document.getElementById('tx-amount').value.trim();
   if (!ethers.isAddress(to)) { toast('Invalid address','','error'); return; }
   if (!amt || isNaN(amt))    { toast('Invalid amount','','error'); return; }
-  const sym = CHAINS[selectedChainId]?.tokenSymbol || 'tokens';
+  const sym = CHAINS[CELO_CHAIN_ID]?.tokenSymbol || 'tokens';
   await sendTx(ov => contracts.cball.transfer(to, BigInt(amt), ov),
     'Transfer', `${amt} ${sym} sent to ${shortAddr(to)}.`);
   refreshTokenData();
@@ -1741,7 +1541,7 @@ async function doApprove() {
   const spender = document.getElementById('ap-spender').value.trim();
   const amt     = document.getElementById('ap-amount').value.trim();
   if (!ethers.isAddress(spender)) { toast('Invalid address','','error'); return; }
-  const sym = CHAINS[selectedChainId]?.tokenSymbol || 'tokens';
+  const sym = CHAINS[CELO_CHAIN_ID]?.tokenSymbol || 'tokens';
   await sendTx(ov => contracts.cball.approve(spender, BigInt(amt||0), ov),
     'Approve', `Allowance set to ${amt||0} ${sym}.`);
 }
@@ -1750,7 +1550,7 @@ async function doCheckAllowance() {
   const own  = document.getElementById('al-owner').value.trim();
   const spd  = document.getElementById('al-spender').value.trim();
   if (!contracts.cball) { toast('No token contract','','error'); return; }
-  const sym = CHAINS[selectedChainId]?.tokenSymbol || 'tokens';
+  const sym = CHAINS[CELO_CHAIN_ID]?.tokenSymbol || 'tokens';
   try {
     const al = await contracts.cball.allowance(own, spd);
     document.getElementById('al-result').textContent = `Allowance: ${al.toString()} ${sym}`;
@@ -1837,7 +1637,7 @@ async function doNftTransfer(safe) {
 async function loadLeaderboard() {
   if (!contracts.miner) return;
   const tbody = document.getElementById('lb-body');
-  const sym   = CHAINS[selectedChainId]?.tokenSymbol || '?';
+  const sym   = CHAINS[CELO_CHAIN_ID]?.tokenSymbol || '?';
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text3)">Loading…</td></tr>';
   try {
     const [addrs, totals] = await contracts.miner.getLeaderboard();
@@ -1865,18 +1665,18 @@ async function loadLeaderboard() {
 //  Admin tab
 // ════════════════════════════════════════════════════════════════
 async function doTokenPause(p) {
-  const sym = CHAINS[selectedChainId]?.tokenSymbol || 'token';
+  const sym = CHAINS[CELO_CHAIN_ID]?.tokenSymbol || 'token';
   await sendTx(ov => p ? contracts.cball.pause(ov) : contracts.cball.unpause(ov),
     p?'Pause '+sym:'Unpause '+sym, sym+(p?' paused.':" unpaused."));
   refreshTokenData();
 }
 async function doMinerPause(p) {
-  const mine = CHAINS[selectedChainId]?.minerName || 'Miner';
+  const mine = CHAINS[CELO_CHAIN_ID]?.minerName || 'Miner';
   await sendTx(ov => p ? contracts.miner.pause(ov) : contracts.miner.unpause(ov),
     p?'Pause '+mine:'Unpause '+mine, mine+(p?' paused.':" unpaused."));
 }
 async function doBadgePause(p) {
-  const badge = CHAINS[selectedChainId]?.badgeName || 'Badge';
+  const badge = CHAINS[CELO_CHAIN_ID]?.badgeName || 'Badge';
   await sendTx(ov => p ? contracts.badge.pause(ov) : contracts.badge.unpause(ov),
     p?'Pause '+badge:'Unpause '+badge, badge+(p?' paused.':" unpaused."));
   refreshBadgeData();
@@ -1925,20 +1725,27 @@ async function doSetApprovalForAll(approved) {
 // ════════════════════════════════════════════════════════════════
 
 // MiniPay requires legacy (type 0) transactions — no EIP-1559 fields.
-// We pass explicit overrides when inside MiniPay so ethers doesn't
-// auto-populate maxFeePerGas / maxPriorityFeePerGas.
-async function getMiniPayOverrides() {
-  if (!isMiniPay() || !provider) return {};
-  const feeData  = await provider.getFeeData();
-  const gasPrice = feeData.gasPrice || ethers.parseUnits('0.5', 'gwei');
-  return { type: 0, gasPrice };
+// Per Celo docs, feeCurrency can be set to USDm for fee abstraction.
+// We always use legacy txs when inside MiniPay.
+async function getLegacyOverrides() {
+  if (!provider) return {};
+  try {
+    const feeData  = await provider.getFeeData();
+    // Use a sensible gasPrice — at least 5 gwei on Celo to be safe
+    const gasPrice = feeData.gasPrice
+      ? (feeData.gasPrice > ethers.parseUnits('5', 'gwei') ? feeData.gasPrice : ethers.parseUnits('5', 'gwei'))
+      : ethers.parseUnits('5', 'gwei');
+    return { type: 0, gasPrice };
+  } catch(e) {
+    return { type: 0, gasPrice: ethers.parseUnits('5', 'gwei') };
+  }
 }
 
 async function sendTx(fn, label, successMsg) {
   if (!address) { toast('Not connected','Connect your wallet first.','error'); return; }
   try {
-    // For MiniPay, inject legacy tx overrides into the contract call
-    const overrides = await getMiniPayOverrides();
+    // Always use legacy (type 0) txs — required by MiniPay, safe on Celo generally
+    const overrides = await getLegacyOverrides();
     const tx = await fn(overrides);
     toast(label + ' sent', txLink(tx.hash), 'info');
     await tx.wait();
@@ -1957,12 +1764,12 @@ function toggleCfgDrawer() {
 
 function clearOverride() {
   localStorage.removeItem('cm_cfg');
-  cfg = { cball:'', miner:'', badge:'', chainId: selectedChainId };
-  applyChainAddresses(selectedChainId);
+  cfg = { cball:'', miner:'', badge:'', chainId: CELO_CHAIN_ID };
+  applyChainAddresses(CELO_CHAIN_ID);
   document.getElementById('cfg-drawer').classList.add('hidden');
   document.getElementById('cfg-toggle-btn').textContent = 'Override addresses';
   initContracts();
-  toast('Reset', 'Using built-in addresses for this network.', 'info');
+  toast('Reset', 'Using built-in Celo Mainnet addresses.', 'info');
 }
 
 function switchTab(name) {
@@ -1983,7 +1790,7 @@ function shortAddr(a) {
 }
 
 function txLink(hash) {
-  const base = CHAINS[selectedChainId]?.explorer || 'https://etherscan.io';
+  const base = CHAINS[CELO_CHAIN_ID]?.explorer || 'https://celoscan.io';
   return `<a href="${base}/tx/${hash}" class="tx-link" target="_blank" rel="noopener">${hash.slice(0,10)}…</a>`;
 }
 
