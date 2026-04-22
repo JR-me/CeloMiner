@@ -292,6 +292,18 @@ def main():
     ensure_solc()
     cball_art, miner_art, badge_art = compile_contracts()
 
+    # M-04: assert compiled bytecode is non-empty before attempting any deployment.
+    # compile_files() can succeed while returning empty bytecode if the contract name
+    # key lookup matches an abstract contract or if the source file compiled but the
+    # named contract has no deployable code.  A zero-length bytecode would create a
+    # codeless address that silently ignores all calls.
+    for label, art in [("cBALL", cball_art), ("CeloMiner", miner_art), ("MinerBadge", badge_art)]:
+        if not art.get("bin") or art["bin"] in ("", "0x"):
+            print(f"❌  Empty bytecode for {label} — compilation may have failed silently.")
+            print(f"    Check that the .sol file compiles without errors and the contract name matches.")
+            sys.exit(1)
+    print("✅  All three contracts compiled with non-empty bytecode.")
+
     # I-03: if --dry-run is set, print the plan and exit without deploying
     if args.dry_run:
         dry_run(w3, sender, cball_art, miner_art, badge_art)

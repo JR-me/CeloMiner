@@ -5,29 +5,198 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="theme-color" content="#07100a" />
+<meta name="theme-color" content="#110d00" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <meta name="talentapp:project_verification" content="844641f80aba9b5074ff4bb1d834b8b8a30c0143b8c4ab544010f9021a7580255653d4aa0f0be9d59cea98d8deb8e193a8cefa7df5245b6578fd5efeba938ad6" />
 <link rel="manifest" href="/manifest.json">  
-<title>ChainMiner</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
-<style>
-  :root {
-    --bg: #0f0f13; --bg2: #1a1a22; --bg3: #22222e;
-    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
-    --text: #f0eff6; --text2: #a09eb8; --text3: #5e5c78;
-    --accent: #7c5cfc; --accent2: #9d7fff; --accent-rgb: 124,92,252;
-    --green: #22c97e; --amber: #f5a623; --red: #e85454; --gold: #ffd700;
-    --radius: 12px; --radius-sm: 8px;
-    --chain-glow: rgba(124,92,252,0.18);
+<title>CeloMiner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js">
+// ════════════════════════════════════════════════════════════════
+//  Mine button — pickaxe swing + ore particle burst
+// ════════════════════════════════════════════════════════════════
+
+function triggerMineAnimation(yieldAmt) {
+  const btn    = document.getElementById('mine-btn');
+  const icon   = document.getElementById('mine-btn-icon');
+  const glow   = document.getElementById('mine-btn-glow');
+  const hero   = document.getElementById('mine-tool-emoji');
+  const canvas = document.getElementById('mine-particles');
+
+  // ── Pickaxe swing ──
+  if (icon) {
+    icon.classList.remove('swinging');
+    void icon.offsetWidth; // force reflow to restart
+    icon.classList.add('swinging');
+    icon.addEventListener('animationend', () => icon.classList.remove('swinging'), { once: true });
   }
 
-  /* ── Global transitions for theme switching ── */
+  // ── Button strike squish ──
+  if (btn) {
+    btn.classList.remove('striking');
+    void btn.offsetWidth;
+    btn.classList.add('striking');
+    btn.addEventListener('animationend', () => btn.classList.remove('striking'), { once: true });
+  }
+
+  // ── Hero emoji shake ──
+  if (hero) {
+    hero.classList.remove('shaking');
+    void hero.offsetWidth;
+    hero.classList.add('shaking');
+    hero.addEventListener('animationend', () => hero.classList.remove('shaking'), { once: true });
+  }
+
+  // ── Glow burst ──
+  if (glow) {
+    glow.classList.remove('bursting');
+    void glow.offsetWidth;
+    glow.classList.add('bursting');
+    glow.addEventListener('animationend', () => {
+      glow.classList.remove('bursting');
+    }, { once: true });
+  }
+
+  // ── Particle burst on canvas ──
+  if (!canvas) return;
+  const dpr  = window.devicePixelRatio || 1;
+  const size = 320;
+  canvas.width  = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width  = size + 'px';
+  canvas.style.height = size + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const cx = size / 2;
+  const cy = size / 2;
+
+  // More particles for higher yields
+  const count = Math.min(6 + (yieldAmt || 1) * 4, 28);
+
+  const particles = Array.from({ length: count }, (_, i) => {
+    const angle  = (Math.random() * Math.PI * 2);
+    const speed  = 1.8 + Math.random() * 3.5;
+    const radius = 3 + Math.random() * 5;
+    // Mix of gold coins (circle) and ore chips (square)
+    const type   = Math.random() < 0.6 ? 'coin' : 'chip';
+    const gold   = ['#ffd700','#f0cc60','#e8b830','#ffec80','#d4aa3c'];
+    const color  = gold[Math.floor(Math.random() * gold.length)];
+    return {
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1.5, // slight upward bias
+      alpha: 1,
+      radius,
+      color,
+      type,
+      rot: Math.random() * Math.PI * 2,
+      rotV: (Math.random() - 0.5) * 0.3,
+      gravity: 0.12 + Math.random() * 0.08,
+    };
+  });
+
+  let frame;
+  const tick = () => {
+    ctx.clearRect(0, 0, size, size);
+    let alive = false;
+    for (const p of particles) {
+      p.x  += p.vx;
+      p.y  += p.vy;
+      p.vy += p.gravity;
+      p.vx *= 0.97;
+      p.alpha -= 0.022;
+      p.rot += p.rotV;
+      if (p.alpha <= 0) continue;
+      alive = true;
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      if (p.type === 'coin') {
+        // Glowing gold coin
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = '#ffd700';
+        ctx.shadowBlur  = 8;
+        ctx.fill();
+        // Inner highlight
+        ctx.beginPath();
+        ctx.arc(-p.radius * 0.25, -p.radius * 0.25, p.radius * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.shadowBlur = 0;
+        ctx.fill();
+        // cBALL text on bigger coins
+        if (p.radius > 6) {
+          ctx.font = `bold ${Math.floor(p.radius * 0.75)}px Rajdhani, sans-serif`;
+          ctx.fillStyle = 'rgba(80,50,0,0.8)';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.shadowBlur = 0;
+          ctx.fillText('c', 0, 0);
+        }
+      } else {
+        // Ore chip — rotated rectangle
+        const w = p.radius * 1.6;
+        const h = p.radius * 0.9;
+        ctx.beginPath();
+        ctx.rect(-w/2, -h/2, w, h);
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = '#ffd700';
+        ctx.shadowBlur  = 4;
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    if (alive) {
+      frame = requestAnimationFrame(tick);
+    } else {
+      ctx.clearRect(0, 0, size, size);
+    }
+  };
+  if (frame) cancelAnimationFrame(frame);
+  tick();
+}
+
+// Immediate visual feedback on mousedown (before tx)
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('mine-btn');
+  if (btn) {
+    btn.addEventListener('mousedown', () => {
+      if (!btn.disabled) triggerMineAnimation(0);
+    });
+    btn.addEventListener('touchstart', () => {
+      if (!btn.disabled) triggerMineAnimation(0);
+    }, { passive: true });
+  }
+});
+
+
+</script>
+<style>
+  :root {
+    --bg: #110d00; --bg2: #1c1500; --bg3: #261c00;
+    --border: rgba(212,170,60,0.12); --border2: rgba(212,170,60,0.22);
+    --text: #f5e8c0; --text2: #b89a50; --text3: #6b5520;
+    --accent: #d4aa3c; --accent2: #f0cc60; --accent-rgb: 212,170,60;
+    --green: #4ecb8a; --amber: #f5a623; --red: #e85454; --gold: #ffd700;
+    --radius: 12px; --radius-sm: 8px;
+    --chain-glow: rgba(212,170,60,0.20);
+    --ore-glow: rgba(255,200,50,0.08);
+  }
+
+  /* ── Global ── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { transition: background-color .45s ease; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, sans-serif;
     background: var(--bg); color: var(--text);
     min-height: 100vh; font-size: 15px; line-height: 1.6;
+    background-image:
+      radial-gradient(ellipse 80% 40% at 50% 0%, rgba(180,130,20,0.07) 0%, transparent 70%),
+      repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(212,170,60,0.015) 40px, rgba(212,170,60,0.015) 41px),
+      repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(212,170,60,0.015) 40px, rgba(212,170,60,0.015) 41px);
   }
   .theme-transition { transition: background-color .45s ease, border-color .45s ease, color .3s ease; }
 
@@ -35,20 +204,25 @@
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 24px; height: 60px;
-    border-bottom: 1px solid var(--border); background: var(--bg);
+    border-bottom: 1px solid var(--border); background: rgba(17,13,0,0.96);
     position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 1px 0 rgba(212,170,60,0.15), 0 4px 24px rgba(0,0,0,0.5);
     transition: background-color .45s ease, border-color .45s ease;
   }
   .topbar-accent {
     position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
-    background: var(--accent); opacity: .75;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), var(--accent), transparent);
+    opacity: .85;
     transition: background .45s ease;
   }
-  .logo { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600; }
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; font-family: 'Cinzel', serif; letter-spacing: 0.04em; color: var(--accent2); text-shadow: 0 0 20px rgba(212,170,60,0.4); }
   .logo-icon {
-    width: 32px; height: 32px; border-radius: 8px;
-    background: var(--accent); display: flex; align-items: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #ffe566, #c8920a);
+    display: flex; align-items: center;
     justify-content: center; font-size: 16px; line-height: 1;
+    box-shadow: 0 0 12px rgba(212,170,60,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
     transition: background .45s ease;
   }
   .topbar-right { display: flex; align-items: center; gap: 10px; }
@@ -135,10 +309,17 @@
   .btn:active { transform: scale(.98); }
   .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
   .btn-primary {
-    background: var(--accent); border-color: var(--accent); color: #fff;
-    transition: background .45s ease, border-color .45s ease, transform .1s;
+    background: linear-gradient(135deg, #c8920a, #e8b830, #c8920a);
+    background-size: 200% 200%;
+    border-color: #d4aa3c; color: #1a1200;
+    font-weight: 700; letter-spacing: 0.03em;
+    transition: background-position .3s ease, transform .1s, box-shadow .2s;
+    box-shadow: 0 2px 12px rgba(212,170,60,0.3);
   }
-  .btn-primary:hover { filter: brightness(1.12); }
+  .btn-primary:hover {
+    background-position: right center;
+    box-shadow: 0 4px 20px rgba(255,215,0,0.4);
+  }
   .btn-green  { background: rgba(34,201,126,.14); border-color: rgba(34,201,126,.38); color: var(--green); }
   .btn-green:hover { background: rgba(34,201,126,.24); }
   .btn-amber  { background: rgba(245,166,35,.12); border-color: rgba(245,166,35,.35); color: var(--amber); }
@@ -172,7 +353,7 @@
   .tab:hover:not(.active) { color: var(--text); }
   .tab.active {
     background: var(--bg3); color: var(--text); border-color: var(--border2);
-    box-shadow: inset 0 -2px 0 var(--accent);
+    box-shadow: inset 0 -2px 0 var(--accent); color: var(--accent2);
   }
 
   /* ── Panels ── */
@@ -187,7 +368,11 @@
   .stat-card {
     background: var(--bg2); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 16px 18px;
-    transition: background .45s ease, border-color .45s ease;
+    transition: background .2s ease, border-color .2s ease, box-shadow .2s;
+  }
+  .stat-card:hover {
+    border-color: rgba(212,170,60,0.35);
+    box-shadow: 0 0 20px rgba(212,170,60,0.07);
   }
   .stat-label {
     font-size: 11px; color: var(--text3); font-weight: 600;
@@ -204,20 +389,46 @@
   /* ── Mine hero ── */
   .mine-hero {
     background: var(--bg2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 32px 24px;
+    border-radius: var(--radius); padding: 200px 24px 36px;
     text-align: center; margin-bottom: 20px;
-    box-shadow: 0 0 60px var(--chain-glow);
+    box-shadow: 0 0 80px var(--chain-glow), 0 0 0 1px rgba(212,170,60,0.12);
     transition: box-shadow .5s ease, background .45s ease, border-color .45s ease;
+    position: relative; overflow: hidden;
+    /* artwork background — icon-512.png sits in the same folder */
+    background-image: url('icon-512.png');
+    background-size: 62%;
+    background-position: center 0%;
+    background-repeat: no-repeat;
   }
-  .mine-tool-display { font-size: 60px; margin-bottom: 8px; line-height: 1; }
-  .mine-title  { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  /* Layer 1: dark vignette so the artwork doesn't fight the UI */
+  .mine-hero::before {
+    content: ''; position: absolute; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 110% 40% at 50% 108%, rgba(17,13,0,1.0) 0%, rgba(17,13,0,0.90) 40%, transparent 100%),
+      radial-gradient(ellipse 45% 100% at 0%   50%, rgba(17,13,0,0.75) 0%, transparent 75%),
+      radial-gradient(ellipse 45% 100% at 100% 50%, rgba(17,13,0,0.75) 0%, transparent 75%),
+      radial-gradient(ellipse 100% 25% at 50% -5%,  rgba(17,13,0,0.50) 0%, transparent 100%);
+    pointer-events: none;
+  }
+  /* Layer 2: gold shimmer overlay */
+  .mine-hero::after {
+    content: ''; position: absolute; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse 70% 40% at 50% 42%, rgba(212,170,60,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  /* All direct children sit above the background layers */
+  .mine-hero > * { position: relative; z-index: 1; }
+  .mine-tool-display { font-size: 60px; margin-bottom: 8px; line-height: 1; opacity: 0.0; height: 0; overflow: hidden; margin: 0; }
+  .mine-title  { font-size: 22px; font-weight: 700; margin-bottom: 4px; font-family: 'Cinzel', serif; color: var(--accent2); letter-spacing: 0.03em; }
   .mine-sub    { color: var(--text2); font-size: 14px; margin-bottom: 24px; transition: color .3s; }
   .progress-bar-wrap {
     background: var(--bg3); border-radius: 20px; height: 8px; margin: 16px 0; overflow: hidden;
     transition: background .45s ease;
   }
   .progress-bar {
-    height: 100%; border-radius: 20px; background: var(--accent);
+    height: 100%; border-radius: 20px;
+    background: linear-gradient(90deg, #c8920a, #ffd700, #f0cc60);
+    box-shadow: 0 0 8px rgba(255,215,0,0.4);
     transition: width .4s ease, background .45s ease;
   }
   .progress-labels {
@@ -234,10 +445,12 @@
   table { width: 100%; border-collapse: collapse; }
   thead th {
     text-align: left; padding: 12px 16px;
-    font-size: 11px; color: var(--text3); font-weight: 600;
-    letter-spacing: .06em; text-transform: uppercase;
+    font-size: 11px; color: var(--accent); font-weight: 700;
+    letter-spacing: .10em; text-transform: uppercase;
+    font-family: 'Cinzel', serif;
     border-bottom: 1px solid var(--border); background: var(--bg3);
     transition: background .45s ease, color .3s;
+    opacity: 0.75;
   }
   tbody td { padding: 13px 16px; font-size: 14px; border-bottom: 1px solid var(--border); }
   tbody tr:last-child td { border-bottom: none; }
@@ -256,7 +469,8 @@
 
   /* ── Badge cards ── */
   .badge-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
-  @media(max-width:600px) { .badge-grid { grid-template-columns: 1fr; } }
+  @media(max-width:900px) { .badge-grid { grid-template-columns: 1fr 1fr; } }
+  @media(max-width:500px) { .badge-grid { grid-template-columns: 1fr; } }
   .badge-card {
     background: var(--bg2); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 20px; text-align: center;
@@ -265,6 +479,7 @@
   .badge-card.eligible   { border-color: rgba(34,201,126,.4); }
   .badge-card.claimed    { border-color: rgba(var(--accent-rgb),.5); }
   .badge-card.legendary-card { border-color: rgba(255,215,0,.3); }
+  .badge-card.god-card { border-color: rgba(255,215,0,.6); background: linear-gradient(135deg, var(--bg2), rgba(60,40,0,0.8)); box-shadow: 0 0 30px rgba(255,215,0,0.12); }
   .badge-icon  { font-size: 44px; margin-bottom: 10px; line-height: 1; }
   .badge-tier  { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
   .badge-req   { font-size: 13px; color: var(--text2); margin-bottom: 16px; line-height: 1.5; }
@@ -298,8 +513,9 @@
 
   /* ── Section title ── */
   .section-title {
-    font-size: 11px; font-weight: 600; color: var(--text3);
-    letter-spacing: .07em; text-transform: uppercase; margin-bottom: 14px;
+    font-size: 11px; font-weight: 700; color: var(--accent);
+    letter-spacing: .12em; text-transform: uppercase; margin-bottom: 14px;
+    font-family: 'Cinzel', serif; opacity: 0.7;
     transition: color .3s;
   }
 
@@ -384,12 +600,107 @@
     .tabs   { gap: 1px; padding: 3px; }
     .tab    { padding: 8px 6px; font-size: 12px; }
     .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .mine-hero { padding: 20px 14px; }
+    .mine-hero { padding: 140px 14px 24px; background-size: 85%; }
     .mine-tool-display { font-size: 48px; }
     .admin-grid { grid-template-columns: 1fr; }
     .config-grid { grid-template-columns: 1fr; }
     .badge-grid { grid-template-columns: 1fr; }
   }
+
+  /* ── Mine button — pickaxe swing + ore glow ── */
+  .mine-btn-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mine-particles-canvas {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 320px; height: 320px;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .mine-btn-styled {
+    position: relative;
+    padding: 14px 48px;
+    font-size: 18px;
+    font-family: 'Cinzel', serif;
+    letter-spacing: .06em;
+    z-index: 2;
+    transform-origin: center center;
+    transition: transform .1s ease, box-shadow .2s ease;
+    overflow: visible !important;
+  }
+  .mine-btn-styled:not(:disabled):hover {
+    box-shadow: 0 6px 28px rgba(255,200,50,0.5), 0 0 0 1px rgba(255,215,0,0.3);
+  }
+  .mine-btn-pickaxe {
+    display: inline-block;
+    font-size: 22px;
+    transform-origin: 80% 80%;
+    transition: transform .08s ease;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  /* Swing keyframe: fast downstroke, bounce back */
+  @keyframes pickaxeSwing {
+    0%   { transform: rotate(0deg) scale(1); }
+    20%  { transform: rotate(-35deg) scale(1.15); }
+    45%  { transform: rotate(25deg) scale(0.95); }
+    65%  { transform: rotate(-10deg) scale(1.05); }
+    80%  { transform: rotate(8deg) scale(0.98); }
+    100% { transform: rotate(0deg) scale(1); }
+  }
+  .mine-btn-pickaxe.swinging {
+    animation: pickaxeSwing 0.45s cubic-bezier(.36,.07,.19,.97) forwards;
+  }
+  /* Button press: squish down on click */
+  @keyframes btnStrike {
+    0%   { transform: scale(1) translateY(0); }
+    25%  { transform: scale(0.94, 1.06) translateY(3px); }
+    55%  { transform: scale(1.04, 0.97) translateY(-2px); }
+    100% { transform: scale(1) translateY(0); }
+  }
+  .mine-btn-styled.striking {
+    animation: btnStrike 0.35s cubic-bezier(.36,.07,.19,.97) forwards;
+  }
+  /* Ambient glow that pulses behind the button at rest */
+  .mine-btn-glow {
+    position: absolute;
+    inset: -12px;
+    border-radius: 24px;
+    background: radial-gradient(ellipse, rgba(212,170,60,0.22) 0%, transparent 70%);
+    z-index: 1;
+    animation: glowPulse 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.5; transform: scale(0.95); }
+    50%       { opacity: 1.0; transform: scale(1.08); }
+  }
+  /* Burst flash on click */
+  @keyframes glowBurst {
+    0%   { opacity: 1; transform: scale(1); }
+    40%  { opacity: 1; transform: scale(1.6); }
+    100% { opacity: 0; transform: scale(2.2); }
+  }
+  .mine-btn-glow.bursting {
+    animation: glowBurst 0.5s ease-out forwards;
+  }
+  /* Mine hero tool emoji — shake on strike */
+  @keyframes heroShake {
+    0%,100% { transform: translateX(0) rotate(0deg); }
+    15%     { transform: translateX(-6px) rotate(-4deg); }
+    35%     { transform: translateX(5px)  rotate(3deg); }
+    55%     { transform: translateX(-3px) rotate(-2deg); }
+    75%     { transform: translateX(2px)  rotate(1deg); }
+  }
+  .mine-tool-display.shaking {
+    animation: heroShake 0.4s ease-out forwards;
+  }
+
 </style>
 </head>
 <body>
@@ -401,7 +712,7 @@
   <div class="topbar-accent" id="topbar-accent"></div>
   <div class="logo">
     <div class="logo-icon" id="logo-icon">⛏</div>
-    <span id="app-title">ChainMiner</span>
+    <span id="app-title">CeloMiner</span>
     <span class="minipay-badge hidden" id="minipay-badge">MiniPay</span>
   </div>
   <div class="topbar-right">
@@ -516,7 +827,7 @@
       <div class="stat-card">
         <div class="stat-label" id="lbl-global-minted">Global Minted</div>
         <div class="stat-val" id="stat-global">—</div>
-        <div class="stat-sub" id="lbl-global-cap">of 1,009,400</div>
+        <div class="stat-sub" id="lbl-global-cap">of 100,940,000</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Global Remaining</div>
@@ -539,10 +850,16 @@
         </div>
       </div>
 
-      <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-        <button class="btn btn-primary" id="mine-btn" onclick="doMine()" style="padding:13px 40px;font-size:16px;">
-          <span id="mine-btn-label">⛏&nbsp; Mine</span>
-        </button>
+      <div style="margin-top:24px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;align-items:center;">
+        <!-- Mine button wrapper — holds particle canvas and the button itself -->
+        <div class="mine-btn-wrap" id="mine-btn-wrap">
+          <canvas id="mine-particles" class="mine-particles-canvas"></canvas>
+          <button class="btn btn-primary mine-btn-styled" id="mine-btn" onclick="doMine()">
+            <span class="mine-btn-pickaxe" id="mine-btn-icon">⛏</span>
+            <span id="mine-btn-label"> Mine</span>
+          </button>
+          <div class="mine-btn-glow" id="mine-btn-glow"></div>
+        </div>
         <button class="btn btn-amber" id="upgrade-btn" onclick="doUpgrade()">
           ⬆&nbsp; Upgrade Tool
         </button>
@@ -574,7 +891,7 @@
       </div>
       <div class="stat-card" style="padding:12px 16px;">
         <div class="stat-label">Max Per User</div>
-        <div style="font-size:18px;font-weight:600;">9,800 <span class="tok-sym" style="font-size:13px;color:var(--text3)">—</span></div>
+        <div style="font-size:18px;font-weight:600;">98,000 <span class="tok-sym" style="font-size:13px;color:var(--text3)">—</span></div>
       </div>
     </div>
   </div>
@@ -595,7 +912,7 @@
       </div>
       <div class="stat-card">
         <div class="stat-label">Max Supply</div>
-        <div class="stat-val amber">1,009,400</div>
+        <div class="stat-val amber">100,940,000</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Minter Address</div>
@@ -668,11 +985,11 @@
       Connect your wallet to check badge eligibility.
     </div>
 
-    <div class="badge-grid">
+    <div class="badge-grid" style="grid-template-columns:repeat(4,1fr);">
       <div class="badge-card" id="badge-common">
         <div class="badge-icon">⛏️</div>
         <div class="badge-tier">Common</div>
-        <div class="badge-req" id="badge-common-req">Reach 400 tokens mined<br/>(Excavator tier)</div>
+        <div class="badge-req" id="badge-common-req">Reach 400 tokens mined</div>
         <div id="badge-common-action">
           <button class="btn btn-full" disabled>—</button>
         </div>
@@ -680,7 +997,7 @@
       <div class="badge-card" id="badge-rare">
         <div class="badge-icon">💎</div>
         <div class="badge-tier" style="color:#4a9eff;">Rare</div>
-        <div class="badge-req" id="badge-rare-req">Reach 9,800 tokens mined<br/>Open to all players</div>
+        <div class="badge-req" id="badge-rare-req">Reach 9,800 tokens mined · Open to all players</div>
         <div id="badge-rare-action">
           <button class="btn btn-full" disabled>—</button>
         </div>
@@ -688,8 +1005,16 @@
       <div class="badge-card legendary-card" id="badge-legendary">
         <div class="badge-icon">⭐</div>
         <div class="badge-tier" style="color:var(--gold);">Legendary</div>
-        <div class="badge-req" id="badge-legendary-req">9,800 mined + Top-10 leaderboard<br/>Only 10 ever minted</div>
+        <div class="badge-req" id="badge-legendary-req">95,000 mined · No leaderboard required · Only 10 ever minted</div>
         <div id="badge-legendary-action">
+          <button class="btn btn-full" disabled>—</button>
+        </div>
+      </div>
+      <div class="badge-card god-card" id="badge-god">
+        <div class="badge-icon">☄️</div>
+        <div class="badge-tier" style="color:#ffd700;text-shadow:0 0 12px rgba(255,215,0,0.6);font-family:'Cinzel',serif;">GOD</div>
+        <div class="badge-req" id="badge-god-req">Hold Legendary + Top-25 leaderboard · Only 1 ever exists</div>
+        <div id="badge-god-action">
           <button class="btn btn-full" disabled>—</button>
         </div>
       </div>
@@ -709,6 +1034,11 @@
         <div class="stat-label">Legendary Minted</div>
         <div class="stat-val gold" id="badge-legendary-count">—</div>
         <div class="stat-sub">of 10 max</div>
+      </div>
+      <div class="stat-card" style="border-color:rgba(255,215,0,0.3);box-shadow:0 0 16px rgba(255,215,0,0.06);">
+        <div class="stat-label" style="color:var(--gold);">GOD Minted</div>
+        <div class="stat-val gold" id="badge-god-count">—</div>
+        <div class="stat-sub">of 1 max — unique</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Badge Paused</div>
@@ -744,7 +1074,7 @@
   ══════════════════════════════════════════════ -->
   <div class="panel" id="panel-leaderboard">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <div class="section-title" style="margin:0;" id="lbl-lb-title">Top 10 Miners</div>
+      <div class="section-title" style="margin:0;" id="lbl-lb-title">Top 25 Miners</div>
       <button class="btn btn-sm" onclick="loadLeaderboard()">↻ Refresh</button>
     </div>
     <div class="table-wrap">
@@ -931,7 +1261,9 @@ const BADGE_ABI = [
   "function legendaryCount() view returns (uint256)",
   "function rareCount() view returns (uint256)",
   "function commonCount() view returns (uint256)",
+  "function godCount() view returns (uint256)",
   "function MAX_LEGENDARY() view returns (uint256)",
+  "function MAX_GOD() view returns (uint256)",
   "function hasClaimedTier(address,uint8) view returns (bool)",
   "function tokenOfOwnerByTier(address,uint8) view returns (uint256)",
   "function tierOf(uint256) view returns (uint8)",
@@ -939,11 +1271,12 @@ const BADGE_ABI = [
   "function ownerOf(uint256) view returns (address)",
   "function getApproved(uint256) view returns (address)",
   "function isApprovedForAll(address,address) view returns (bool)",
-  "function eligibility(address) view returns (bool,bool,bool,bool,bool,bool,uint256)",
+  "function eligibility(address) view returns (bool,bool,bool,bool,bool,bool,bool,bool,uint256)",
   "function tokenURI(uint256) view returns (string)",
   "function claimCommon()",
   "function claimRare()",
   "function claimLegendary()",
+  "function claimGod()",
   "function approve(address,uint256)",
   "function setApprovalForAll(address,bool)",
   "function transferFrom(address,address,uint256)",
@@ -970,11 +1303,11 @@ const CHAINS = {
   42220: {
     name:"Celo Mainnet", short:"Celo", icon:"🌿",
     rpc:"https://forno.celo.org", explorer:"https://celoscan.io",
-    theme:{ accent:"#35D07F",accent2:"#52e89a",accentRgb:"53,208,127",
-            bg:"#07100a",bg2:"#0d1d11",bg3:"#132718",
-            text2:"#72b88a",text3:"#3a5e47",glow:"rgba(53,208,127,0.16)" },
+    theme:{ accent:"#d4aa3c",accent2:"#f0cc60",accentRgb:"212,170,60",
+            bg:"#110d00",bg2:"#1c1500",bg3:"#261c00",
+            text2:"#b89a50",text3:"#6b5520",glow:"rgba(212,170,60,0.20)" },
     minerName:"CeloMiner", tokenSymbol:"cBALL", badgeName:"CeloBadge",
-    appTitle:"CeloMiner", logoEmoji:"🌿",
+    appTitle:"CeloMiner", logoEmoji:"⛏",
     contracts:{ token:"0xfa83D5f40425Cdb7139855b3641869D003b0E8ab", miner:"0x1f22f19a18038D9FB2b51BFb0878227f1926233f", badge:"0xc516406230FF9AdD7138808Df3948636aeAaC44c" }
   }
 };
@@ -1142,7 +1475,7 @@ function applyChainTheme(id) {
   document.body.style.backgroundColor = t.bg;
 
   setText('topbar-accent', null, t.accent, 'background');
-  setText('logo-icon',     c.logoEmoji);
+  setText('logo-icon',     c.logoEmoji || '⛏');
   document.getElementById('logo-icon').style.background = t.accent;
   setText('app-title', c.appTitle);
   document.title = c.appTitle;
@@ -1187,8 +1520,8 @@ function updateAllLabels(c) {
   setText('lbl-yield',        sym + ' / Click');
   setText('lbl-yield-sym',    sym);
   setText('lbl-global-minted','Global ' + sym + ' Minted');
-  setText('lbl-global-cap',   'of 1,009,400 ' + sym);
-  setText('mine-btn-label',   '⛏\u00a0 Mine ' + sym);
+  setText('lbl-global-cap',   'of 100,940,000 ' + sym);
+  setText('mine-btn-label',   ' Mine ' + sym);
 
   // Token tab
   setText('lbl-tok-balance',   'Your ' + sym + ' Balance');
@@ -1196,12 +1529,12 @@ function updateAllLabels(c) {
   setText('btn-send-token',    'Send ' + sym);
 
   // Badge reqs
-  setText('badge-common-req',    'Reach 400 ' + sym + ' mined\n(Excavator tier)');
-  setText('badge-rare-req',      'Reach 9,800 ' + sym + ' mined\nOpen to all players');
-  setText('badge-legendary-req', '9,800 ' + sym + ' + Top-10 leaderboard\nOnly 10 ever minted');
+  setText('badge-common-req',    'Reach 400 ' + sym + ' mined');
+  setText('badge-rare-req',      'Reach 9,800 ' + sym + ' mined · Open to all players');
+  setText('badge-legendary-req', '95,000 ' + sym + ' mined · No leaderboard required · Only 10 ever minted');
 
   // Leaderboard
-  setText('lbl-lb-title', 'Top 10 ' + mine + 's');
+  setText('lbl-lb-title', 'Top 25 ' + mine + 's');
   setText('lbl-lb-col',   sym + ' Mined');
 
   // Admin section headings
@@ -1479,12 +1812,17 @@ async function doMine() {
     toast('Transaction sent', txLink(tx.hash), 'info');
     await tx.wait();
     toast('Mined!', sym + ' added to your account.', 'success');
+    // Trigger a bigger burst now we know the yield (fire after tx confirmed)
+    try {
+      const stats = await contracts.miner.getStats(address);
+      triggerMineAnimation(Number(stats[3])); // yieldPerClick
+    } catch(_) { triggerMineAnimation(1); }
     refreshMineData(); refreshTokenData(); loadLeaderboard(); refreshBadgeData();
   } catch(e) {
     toast('Mine failed', e.reason || e.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<span id="mine-btn-label">⛏\u00a0 Mine ${sym}</span>`;
+    btn.innerHTML = `<span class="mine-btn-pickaxe" id="mine-btn-icon">⛏</span><span id="mine-btn-label"> Mine ${sym}</span>`;
   }
 }
 
@@ -1564,15 +1902,17 @@ async function doCheckAllowance() {
 async function refreshBadgeData() {
   if (!contracts.badge) return;
   try {
-    const [lc, rc, cc, paused] = await Promise.all([
+    const [lc, rc, cc, gc, paused] = await Promise.all([
       contracts.badge.legendaryCount(),
       contracts.badge.rareCount(),
       contracts.badge.commonCount(),
+      contracts.badge.godCount(),
       contracts.badge.paused()
     ]);
     document.getElementById('badge-legendary-count').textContent = lc.toString();
     document.getElementById('badge-rare-count').textContent      = rc.toString();
     document.getElementById('badge-common-count').textContent    = cc.toString();
+    document.getElementById('badge-god-count').textContent       = gc.toString();
     document.getElementById('badge-paused').textContent   = paused ? 'Yes' : 'No';
     document.getElementById('badge-paused').className     = 'stat-val ' + (paused ? 'amber' : 'green');
   } catch(e) {}
@@ -1581,10 +1921,12 @@ async function refreshBadgeData() {
   if (!address) return;
 
   try {
-    const [ce,re,le,cc2,rc2,lc2] = await contracts.badge.eligibility(address);
+    // eligibility() returns 9 values: ce,re,le,ge,cc2,rc2,lc2,gc2,totalMined
+    const [ce,re,le,ge,cc2,rc2,lc2,gc2,playerTotalMined] = await contracts.badge.eligibility(address);
     setBadgeState('common', ce, cc2);
     setBadgeState('rare',   re, rc2);
     setBadgeLegendaryState(le, lc2);
+    setBadgeGodState(ge, gc2);
   } catch(e) { console.error('badge eligibility', e); }
 }
 
@@ -1615,9 +1957,55 @@ function setBadgeLegendaryState(eligible, claimed) {
   }
 }
 
+function setBadgeGodState(eligible, claimed) {
+  const card   = document.getElementById('badge-god');
+  const action = document.getElementById('badge-god-action');
+  if (!card) return;
+  card.className = 'badge-card god-card' + (claimed?' claimed':eligible?' eligible':'');
+  if (claimed) {
+    action.innerHTML = `<div class="badge-claimed-tag" style="color:var(--gold);background:rgba(255,215,0,.2);border-color:rgba(255,215,0,.5);font-family:'Cinzel',serif;letter-spacing:.05em;">☄ GOD</div>`;
+  } else if (eligible) {
+    action.innerHTML = `<button class="btn btn-gold btn-full" style="font-family:'Cinzel',serif;letter-spacing:.05em;text-shadow:0 0 8px rgba(255,215,0,.4);" onclick="doClaim('god')">⚡ Claim GOD Badge</button>`;
+  } else {
+    action.innerHTML = `<button class="btn btn-full" disabled>Not eligible</button>`;
+  }
+}
+
 async function doClaim(tier) {
   if (!contracts.badge) { toast('No contract','','error'); return; }
-  const fns = { common:'claimCommon', rare:'claimRare', legendary:'claimLegendary' };
+
+  // H-1: re-fetch live cap counters immediately before sending the transaction.
+  // The eligibility() call that populated the UI button may be stale — another
+  // player could have claimed the last slot between the UI poll and this click.
+  // Catching this client-side saves the user gas and shows a clear error message.
+  if (tier === 'legendary') {
+    try {
+      const [count, max] = await Promise.all([
+        contracts.badge.legendaryCount(),
+        contracts.badge.MAX_LEGENDARY()
+      ]);
+      if (BigInt(count) >= BigInt(max)) {
+        toast('Cap reached', `All ${max} Legendary badges have already been claimed.`, 'error');
+        refreshBadgeData(); // refresh UI to reflect current state
+        return;
+      }
+    } catch(e) { /* if pre-flight fails, proceed and let the tx revert with a clear on-chain error */ }
+  }
+  if (tier === 'god') {
+    try {
+      const [count, max] = await Promise.all([
+        contracts.badge.godCount(),
+        contracts.badge.MAX_GOD()
+      ]);
+      if (BigInt(count) >= BigInt(max)) {
+        toast('Cap reached', 'The GOD badge has already been claimed — only 1 can ever exist.', 'error');
+        refreshBadgeData();
+        return;
+      }
+    } catch(e) { /* proceed and let the tx revert */ }
+  }
+
+  const fns = { common:'claimCommon', rare:'claimRare', legendary:'claimLegendary', god:'claimGod' };
   const lbl = tier.charAt(0).toUpperCase() + tier.slice(1);
   await sendTx(ov => contracts.badge[fns[tier]](ov), 'Claim Badge', lbl + ' badge claimed!');
   refreshBadgeData();
@@ -1803,6 +2191,168 @@ function toast(title, msg, type='info') {
   wrap.appendChild(el);
   setTimeout(() => el?.remove(), 6000);
 }
+
+// ════════════════════════════════════════════════════════════════
+//  Mine button — pickaxe swing + ore particle burst
+// ════════════════════════════════════════════════════════════════
+
+function triggerMineAnimation(yieldAmt) {
+  const btn    = document.getElementById('mine-btn');
+  const icon   = document.getElementById('mine-btn-icon');
+  const glow   = document.getElementById('mine-btn-glow');
+  const hero   = document.getElementById('mine-tool-emoji');
+  const canvas = document.getElementById('mine-particles');
+
+  // ── Pickaxe swing ──
+  if (icon) {
+    icon.classList.remove('swinging');
+    void icon.offsetWidth; // force reflow to restart
+    icon.classList.add('swinging');
+    icon.addEventListener('animationend', () => icon.classList.remove('swinging'), { once: true });
+  }
+
+  // ── Button strike squish ──
+  if (btn) {
+    btn.classList.remove('striking');
+    void btn.offsetWidth;
+    btn.classList.add('striking');
+    btn.addEventListener('animationend', () => btn.classList.remove('striking'), { once: true });
+  }
+
+  // ── Hero emoji shake ──
+  if (hero) {
+    hero.classList.remove('shaking');
+    void hero.offsetWidth;
+    hero.classList.add('shaking');
+    hero.addEventListener('animationend', () => hero.classList.remove('shaking'), { once: true });
+  }
+
+  // ── Glow burst ──
+  if (glow) {
+    glow.classList.remove('bursting');
+    void glow.offsetWidth;
+    glow.classList.add('bursting');
+    glow.addEventListener('animationend', () => {
+      glow.classList.remove('bursting');
+    }, { once: true });
+  }
+
+  // ── Particle burst on canvas ──
+  if (!canvas) return;
+  const dpr  = window.devicePixelRatio || 1;
+  const size = 320;
+  canvas.width  = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width  = size + 'px';
+  canvas.style.height = size + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const cx = size / 2;
+  const cy = size / 2;
+
+  // More particles for higher yields
+  const count = Math.min(6 + (yieldAmt || 1) * 4, 28);
+
+  const particles = Array.from({ length: count }, (_, i) => {
+    const angle  = (Math.random() * Math.PI * 2);
+    const speed  = 1.8 + Math.random() * 3.5;
+    const radius = 3 + Math.random() * 5;
+    // Mix of gold coins (circle) and ore chips (square)
+    const type   = Math.random() < 0.6 ? 'coin' : 'chip';
+    const gold   = ['#ffd700','#f0cc60','#e8b830','#ffec80','#d4aa3c'];
+    const color  = gold[Math.floor(Math.random() * gold.length)];
+    return {
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1.5, // slight upward bias
+      alpha: 1,
+      radius,
+      color,
+      type,
+      rot: Math.random() * Math.PI * 2,
+      rotV: (Math.random() - 0.5) * 0.3,
+      gravity: 0.12 + Math.random() * 0.08,
+    };
+  });
+
+  let frame;
+  const tick = () => {
+    ctx.clearRect(0, 0, size, size);
+    let alive = false;
+    for (const p of particles) {
+      p.x  += p.vx;
+      p.y  += p.vy;
+      p.vy += p.gravity;
+      p.vx *= 0.97;
+      p.alpha -= 0.022;
+      p.rot += p.rotV;
+      if (p.alpha <= 0) continue;
+      alive = true;
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      if (p.type === 'coin') {
+        // Glowing gold coin
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = '#ffd700';
+        ctx.shadowBlur  = 8;
+        ctx.fill();
+        // Inner highlight
+        ctx.beginPath();
+        ctx.arc(-p.radius * 0.25, -p.radius * 0.25, p.radius * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.shadowBlur = 0;
+        ctx.fill();
+        // cBALL text on bigger coins
+        if (p.radius > 6) {
+          ctx.font = `bold ${Math.floor(p.radius * 0.75)}px Rajdhani, sans-serif`;
+          ctx.fillStyle = 'rgba(80,50,0,0.8)';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.shadowBlur = 0;
+          ctx.fillText('c', 0, 0);
+        }
+      } else {
+        // Ore chip — rotated rectangle
+        const w = p.radius * 1.6;
+        const h = p.radius * 0.9;
+        ctx.beginPath();
+        ctx.rect(-w/2, -h/2, w, h);
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = '#ffd700';
+        ctx.shadowBlur  = 4;
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    if (alive) {
+      frame = requestAnimationFrame(tick);
+    } else {
+      ctx.clearRect(0, 0, size, size);
+    }
+  };
+  if (frame) cancelAnimationFrame(frame);
+  tick();
+}
+
+// Immediate visual feedback on mousedown (before tx)
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('mine-btn');
+  if (btn) {
+    btn.addEventListener('mousedown', () => {
+      if (!btn.disabled) triggerMineAnimation(0);
+    });
+    btn.addEventListener('touchstart', () => {
+      if (!btn.disabled) triggerMineAnimation(0);
+    }, { passive: true });
+  }
+});
+
+
 </script>
 </body>
 </html>
