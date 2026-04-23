@@ -12,7 +12,6 @@
 <link rel="manifest" href="/manifest.json">  
 <title>CeloMiner</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/viem@2.21.19/dist/viem.umd.min.js"></script>
 <script>
 // ════════════════════════════════════════════════════════════════
 //  Mine button — pickaxe swing + ore particle burst
@@ -1853,12 +1852,13 @@ async function doMine() {
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div>&nbsp;Mining…';
   try {
-    const hash = await viemWallet.writeContract({
-      address: cfg.miner, abi: MINER_ABI_VIEM,
-      functionName: 'mine', args: [], account: address,
+    const data = encodeCallData(ABI_FRAGMENTS['miner.mine'], []);
+    const hash = await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [{ from: address, to: cfg.miner, data: data }],
     });
     toast('Transaction sent', txLink(hash), 'info');
-    await viemPublic.waitForTransactionReceipt({ hash });
+    await waitForTx(hash);
     toast('Mined!', sym + ' added to your account.', 'success');
     // Trigger a bigger burst now we know the yield (fire after tx confirmed)
     try {
@@ -1880,12 +1880,13 @@ async function doUpgrade() {
   const btn = document.getElementById('upgrade-btn');
   btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
   try {
-    const hash = await viemWallet.writeContract({
-      address: cfg.miner, abi: MINER_ABI_VIEM,
-      functionName: 'upgrade', args: [], account: address,
+    const data = encodeCallData(ABI_FRAGMENTS['miner.upgrade'], []);
+    const hash = await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [{ from: address, to: cfg.miner, data: data }],
     });
     toast('Transaction sent', txLink(hash), 'info');
-    await viemPublic.waitForTransactionReceipt({ hash });
+    await waitForTx(hash);
     toast('Upgraded!', 'Tool upgraded successfully.', 'success');
     refreshMineData();
   } catch(e) { const msg = e.shortMessage || e.reason || e.message || String(e); toast('Upgrade failed', msg, 'error'); }
@@ -2155,57 +2156,96 @@ async function doSetApprovalForAll(approved) {
 }
 
 // ════════════════════════════════════════════════════════════════
-//  viem clients
+//  MiniPay-compatible transaction layer
 // ════════════════════════════════════════════════════════════════
+// viem does not publish a UMD/CDN bundle, so we encode transactions
+// using ethers Interface for ABI encoding and send via raw
+// window.ethereum eth_sendTransaction — this works in MiniPay because
+// we bypass ethers BrowserProvider's transaction formatting entirely.
 
 function initViemClients() {
-  if (!window.viem || !window.ethereum) return;
-  const celoChain = viem.defineChain({
-    id: 42220,
-    name: 'Celo Mainnet',
-    nativeCurrency: { name: 'CELO', symbol: 'CELO', decimals: 18 },
-    rpcUrls: { default: { http: ['https://forno.celo.org'] } },
-    blockExplorers: { default: { name: 'Celoscan', url: 'https://celoscan.io' } },
-  });
-  viemWallet = viem.createWalletClient({
-    chain:     celoChain,
-    transport: viem.custom(window.ethereum),
-  });
-  viemPublic = viem.createPublicClient({
-    chain:     celoChain,
-    transport: viem.http('https://forno.celo.org'),
-  });
+  // No external client needed — we use raw window.ethereum directly
+}
+
+function encodeCallData(abiFragment, args) {
+  // Use ethers Interface for ABI encoding (ethers is already loaded)
+  const iface = new ethers.Interface([abiFragment]);
+  const fnName = abiFragment.match(/function (\w+)/)[1];
+  return iface.encodeFunctionData(fnName, args || []);
+}
+
+async function waitForTx(hash) {
+  // Poll forno for receipt
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    const receipt = await provider.getTransactionReceipt(hash);
+    if (receipt) return receipt;
+  }
+  throw new Error('Transaction timeout');
 }
 
 // ════════════════════════════════════════════════════════════════
 //  Helpers
 // ════════════════════════════════════════════════════════════════
 
-// sendTx uses viem walletClient.writeContract() for ALL write transactions.
-// This is required for MiniPay compatibility — ethers.js cannot handle
-// MiniPay's Custom Fee Abstraction transaction format.
-// Read-only calls still use ethers.js contracts (no change needed there).
-async function sendTx(contractKey, functionName, args, label, successMsg) {
-  if (!address)    { toast('Not connected','Connect your wallet first.','error'); return; }
-  if (!viemWallet) { toast('Wallet error','Please reconnect your wallet.','error'); return; }
+// sendTx sends transactions via raw window.ethereum eth_sendTransaction.
+// This is MiniPay-compatible because:
+//  - We do NOT use ethers BrowserProvider.send() which wraps transactions
+//    in a format MiniPay's fee abstraction layer cannot process.
+//  - We pass the raw transaction directly to window.ethereum, letting
+//    MiniPay handle gas/fee currency natively.
+//  - ethers.Interface is used only for ABI encoding (pure JS, no provider).
+const ABI_FRAGMENTS = {
+  // cBALL
+  'cball.transfer':          'function transfer(address to, uint256 amount)',
+  'cball.approve':           'function approve(address spender, uint256 amount)',
+  'cball.setMinter':         'function setMinter(address minter_)',
+  'cball.updateMinter':      'function updateMinter(address newMinter)',
+  'cball.transferOwnership': 'function transferOwnership(address newOwner)',
+  'cball.acceptOwnership':   'function acceptOwnership()',
+  'cball.pause':             'function pause()',
+  'cball.unpause':           'function unpause()',
+  // CeloMiner
+  'miner.mine':              'function mine()',
+  'miner.upgrade':           'function upgrade()',
+  'miner.transferOwnership': 'function transferOwnership(address newOwner)',
+  'miner.acceptOwnership':   'function acceptOwnership()',
+  'miner.pause':             'function pause()',
+  'miner.unpause':           'function unpause()',
+  // MinerBadge
+  'badge.claimCommon':       'function claimCommon()',
+  'badge.claimRare':         'function claimRare()',
+  'badge.claimLegendary':    'function claimLegendary()',
+  'badge.claimGod':          'function claimGod()',
+  'badge.approve':           'function approve(address to, uint256 tokenId)',
+  'badge.setApprovalForAll': 'function setApprovalForAll(address operator, bool approved)',
+  'badge.transferFrom':      'function transferFrom(address from, address to, uint256 tokenId)',
+  'badge.safeTransferFrom':  'function safeTransferFrom(address from, address to, uint256 tokenId)',
+  'badge.transferOwnership': 'function transferOwnership(address newOwner)',
+  'badge.acceptOwnership':   'function acceptOwnership()',
+  'badge.pause':             'function pause()',
+  'badge.unpause':           'function unpause()',
+};
 
-  // Map contractKey to address and ABI
+async function sendTx(contractKey, functionName, args, label, successMsg) {
+  if (!address) { toast('Not connected','Connect your wallet first.','error'); return; }
+
   const addrMap = { cball: cfg.cball, miner: cfg.miner, badge: cfg.badge };
-  const abiMap  = { cball: CBALL_ABI_VIEM, miner: MINER_ABI_VIEM, badge: BADGE_ABI_VIEM };
-  const contractAddress = addrMap[contractKey];
-  const abi             = abiMap[contractKey];
-  if (!contractAddress) { toast('No contract','Set contract address first.','error'); return; }
+  const to      = addrMap[contractKey];
+  if (!to) { toast('No contract','Set contract address first.','error'); return; }
+
+  const fragKey = contractKey + '.' + functionName;
+  const frag    = ABI_FRAGMENTS[fragKey];
+  if (!frag) { toast('Error', 'Unknown function: ' + fragKey, 'error'); return; }
 
   try {
-    const hash = await viemWallet.writeContract({
-      address:      contractAddress,
-      abi:          abi,
-      functionName: functionName,
-      args:         args || [],
-      account:      address,
+    const data = encodeCallData(frag, args || []);
+    const hash = await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [{ from: address, to: to, data: data }],
     });
     toast(label + ' sent', txLink(hash), 'info');
-    await viemPublic.waitForTransactionReceipt({ hash });
+    await waitForTx(hash);
     toast('Success', successMsg, 'success');
   } catch(e) {
     const msg = e.shortMessage || e.message || String(e);
