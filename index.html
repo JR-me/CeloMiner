@@ -6,14 +6,14 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#110d00" />
-<meta name="celo:app_id" content="celominer"/>
-<meta name="application-name" content="CeloMiner"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <meta name="talentapp:project_verification" content="844641f80aba9b5074ff4bb1d834b8b8a30c0143b8c4ab544010f9021a7580255653d4aa0f0be9d59cea98d8deb8e193a8cefa7df5245b6578fd5efeba938ad6" />
 <link rel="manifest" href="/manifest.json">  
 <title>CeloMiner</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/viem@2.21.19/dist/viem.umd.min.js"></script>
+<script>
 // ════════════════════════════════════════════════════════════════
 //  Mine button — pickaxe swing + ore particle burst
 // ════════════════════════════════════════════════════════════════
@@ -1291,6 +1291,44 @@ const BADGE_ABI = [
 ];
 
 // ════════════════════════════════════════════════════════════════
+//  viem ABIs (array-of-objects format for writeContract)
+// ════════════════════════════════════════════════════════════════
+const CBALL_ABI_VIEM = [
+  { name:'transfer',          type:'function', inputs:[{type:'address'},{type:'uint256'}],           outputs:[{type:'bool'}] },
+  { name:'approve',           type:'function', inputs:[{type:'address'},{type:'uint256'}],           outputs:[{type:'bool'}] },
+  { name:'transferFrom',      type:'function', inputs:[{type:'address'},{type:'address'},{type:'uint256'}], outputs:[{type:'bool'}] },
+  { name:'setMinter',         type:'function', inputs:[{type:'address'}],                            outputs:[] },
+  { name:'updateMinter',      type:'function', inputs:[{type:'address'}],                            outputs:[] },
+  { name:'transferOwnership', type:'function', inputs:[{type:'address'}],                            outputs:[] },
+  { name:'acceptOwnership',   type:'function', inputs:[],                                            outputs:[] },
+  { name:'pause',             type:'function', inputs:[],                                            outputs:[] },
+  { name:'unpause',           type:'function', inputs:[],                                            outputs:[] },
+];
+const MINER_ABI_VIEM = [
+  { name:'mine',              type:'function', inputs:[],                                            outputs:[] },
+  { name:'upgrade',           type:'function', inputs:[],                                            outputs:[] },
+  { name:'transferOwnership', type:'function', inputs:[{type:'address'}],                            outputs:[] },
+  { name:'acceptOwnership',   type:'function', inputs:[],                                            outputs:[] },
+  { name:'pause',             type:'function', inputs:[],                                            outputs:[] },
+  { name:'unpause',           type:'function', inputs:[],                                            outputs:[] },
+];
+const BADGE_ABI_VIEM = [
+  { name:'claimCommon',       type:'function', inputs:[],                                            outputs:[] },
+  { name:'claimRare',         type:'function', inputs:[],                                            outputs:[] },
+  { name:'claimLegendary',    type:'function', inputs:[],                                            outputs:[] },
+  { name:'claimGod',          type:'function', inputs:[],                                            outputs:[] },
+  { name:'approve',           type:'function', inputs:[{type:'address'},{type:'uint256'}],           outputs:[] },
+  { name:'setApprovalForAll', type:'function', inputs:[{type:'address'},{type:'bool'}],              outputs:[] },
+  { name:'transferFrom',      type:'function', inputs:[{type:'address'},{type:'address'},{type:'uint256'}], outputs:[] },
+  { name:'safeTransferFrom',  type:'function', inputs:[{type:'address'},{type:'address'},{type:'uint256'}], outputs:[] },
+  { name:'transferOwnership', type:'function', inputs:[{type:'address'}],                            outputs:[] },
+  { name:'acceptOwnership',   type:'function', inputs:[],                                            outputs:[] },
+  { name:'pause',             type:'function', inputs:[],                                            outputs:[] },
+  { name:'unpause',           type:'function', inputs:[],                                            outputs:[] },
+];
+
+
+// ════════════════════════════════════════════════════════════════
 //  Chain registry — brand colours + identity per network
 //  ── HOW TO DEPLOY ──────────────────────────────────────────────
 //  After running deploy_celominer.py, paste the three addresses
@@ -1310,7 +1348,7 @@ const CHAINS = {
             text2:"#b89a50",text3:"#6b5520",glow:"rgba(212,170,60,0.20)" },
     minerName:"CeloMiner", tokenSymbol:"cBALL", badgeName:"CeloBadge",
     appTitle:"CeloMiner", logoEmoji:"⛏",
-    contracts:{ token:"0xc1d4d743B254379e4967294B1D54c28500b3473b", miner:"0x6bb51eb43ec5738276FCa6683b9C309066b047E0", badge:"0xDbd678c78761Fc417f891803b328cCbc00d0526F" }
+    contracts:{ token:"0xfa83D5f40425Cdb7139855b3641869D003b0E8ab", miner:"0x1f22f19a18038D9FB2b51BFb0878227f1926233f", badge:"0xc516406230FF9AdD7138808Df3948636aeAaC44c" }
   }
 };
 
@@ -1321,6 +1359,12 @@ let provider = null, signer = null, address = null;
 let selectedChainId = CELO_CHAIN_ID;
 let contracts = { cball:null, miner:null, badge:null };
 let cfg = { cball:'', miner:'', badge:'', chainId: CELO_CHAIN_ID };
+
+// ── viem clients (used for ALL write transactions — required for MiniPay) ──
+// ethers.js is kept for read-only calls and address validation.
+// MiniPay uses Custom Fee Abstraction which ethers.js cannot handle.
+let viemWallet = null;   // walletClient — signs and sends transactions
+let viemPublic = null;   // publicClient — waits for receipts
 
 const TOOL_NAMES  = ['Pickaxe','Drill','Excavator'];
 const TOOL_EMOJIS = ['⛏️','🔩','🏗️'];
@@ -1366,6 +1410,7 @@ window.addEventListener('load', async () => {
           address  = accs[0];
           provider = new ethers.BrowserProvider(window.ethereum);
           signer   = await provider.getSigner();
+          initViemClients();
           updateWalletUI();
           await checkNetworkMatch();
           initContracts();
@@ -1381,10 +1426,8 @@ window.addEventListener('load', async () => {
 
 async function autoConnectMiniPay() {
   try {
-    // Show MiniPay badge in topbar
     const badge = document.getElementById('minipay-badge');
     if (badge) badge.classList.remove('hidden');
-    // Hide connect-wallet button — MiniPay handles wallet implicitly
     const wbtn = document.getElementById('wallet-btn');
     if (wbtn) wbtn.style.display = 'none';
 
@@ -1392,6 +1435,7 @@ async function autoConnectMiniPay() {
     address  = accs[0];
     provider = new ethers.BrowserProvider(window.ethereum);
     signer   = await provider.getSigner();
+    initViemClients();
     updateWalletUI();
     initContracts();
   } catch(e) {
@@ -1588,8 +1632,8 @@ async function connectWallet() {
     address  = accs[0];
     provider = new ethers.BrowserProvider(window.ethereum);
     signer   = await provider.getSigner();
+    initViemClients();
     updateWalletUI();
-    // Switch wallet to Celo if it isn't already
     await ensureCeloNetwork();
     initContracts();
     toast('Wallet connected', shortAddr(address), 'success');
@@ -1809,10 +1853,12 @@ async function doMine() {
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div>&nbsp;Mining…';
   try {
-    const overrides = await getLegacyOverrides();
-    const tx = await contracts.miner.mine(overrides);
-    toast('Transaction sent', txLink(tx.hash), 'info');
-    await tx.wait();
+    const hash = await viemWallet.writeContract({
+      address: cfg.miner, abi: MINER_ABI_VIEM,
+      functionName: 'mine', args: [], account: address,
+    });
+    toast('Transaction sent', txLink(hash), 'info');
+    await viemPublic.waitForTransactionReceipt({ hash });
     toast('Mined!', sym + ' added to your account.', 'success');
     // Trigger a bigger burst now we know the yield (fire after tx confirmed)
     try {
@@ -1821,7 +1867,8 @@ async function doMine() {
     } catch(_) { triggerMineAnimation(1); }
     refreshMineData(); refreshTokenData(); loadLeaderboard(); refreshBadgeData();
   } catch(e) {
-    toast('Mine failed', e.reason || e.message, 'error');
+    const msg = e.shortMessage || e.reason || e.message || String(e);
+    toast('Mine failed', msg, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = `<span class="mine-btn-pickaxe" id="mine-btn-icon">⛏</span><span id="mine-btn-label"> Mine ${sym}</span>`;
@@ -1833,13 +1880,15 @@ async function doUpgrade() {
   const btn = document.getElementById('upgrade-btn');
   btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
   try {
-    const overrides = await getLegacyOverrides();
-    const tx = await contracts.miner.upgrade(overrides);
-    toast('Transaction sent', txLink(tx.hash), 'info');
-    await tx.wait();
+    const hash = await viemWallet.writeContract({
+      address: cfg.miner, abi: MINER_ABI_VIEM,
+      functionName: 'upgrade', args: [], account: address,
+    });
+    toast('Transaction sent', txLink(hash), 'info');
+    await viemPublic.waitForTransactionReceipt({ hash });
     toast('Upgraded!', 'Tool upgraded successfully.', 'success');
     refreshMineData();
-  } catch(e) { toast('Upgrade failed', e.reason || e.message, 'error'); }
+  } catch(e) { const msg = e.shortMessage || e.reason || e.message || String(e); toast('Upgrade failed', msg, 'error'); }
   finally { btn.disabled = false; btn.innerHTML = '⬆&nbsp; Upgrade Tool'; }
 }
 
@@ -1873,8 +1922,7 @@ async function doTransfer() {
   if (!ethers.isAddress(to)) { toast('Invalid address','','error'); return; }
   if (!amt || isNaN(amt))    { toast('Invalid amount','','error'); return; }
   const sym = CHAINS[CELO_CHAIN_ID]?.tokenSymbol || 'tokens';
-  await sendTx(ov => contracts.cball.transfer(to, BigInt(amt), ov),
-    'Transfer', `${amt} ${sym} sent to ${shortAddr(to)}.`);
+  await sendTx('cball','transfer',[to, BigInt(amt)],'Transfer',`${amt} ${sym} sent to ${shortAddr(to)}.`);
   refreshTokenData();
 }
 
@@ -1883,8 +1931,7 @@ async function doApprove() {
   const amt     = document.getElementById('ap-amount').value.trim();
   if (!ethers.isAddress(spender)) { toast('Invalid address','','error'); return; }
   const sym = CHAINS[CELO_CHAIN_ID]?.tokenSymbol || 'tokens';
-  await sendTx(ov => contracts.cball.approve(spender, BigInt(amt||0), ov),
-    'Approve', `Allowance set to ${amt||0} ${sym}.`);
+  await sendTx('cball','approve',[spender, BigInt(amt||0)],'Approve',`Allowance set to ${amt||0} ${sym}.`);
 }
 
 async function doCheckAllowance() {
@@ -2009,7 +2056,7 @@ async function doClaim(tier) {
 
   const fns = { common:'claimCommon', rare:'claimRare', legendary:'claimLegendary', god:'claimGod' };
   const lbl = tier.charAt(0).toUpperCase() + tier.slice(1);
-  await sendTx(ov => contracts.badge[fns[tier]](ov), 'Claim Badge', lbl + ' badge claimed!');
+  await sendTx('badge', fns[tier], [], 'Claim Badge', lbl + ' badge claimed!');
   refreshBadgeData();
 }
 
@@ -2018,8 +2065,8 @@ async function doNftTransfer(safe) {
   const to      = document.getElementById('nft-to').value.trim();
   const tokenId = document.getElementById('nft-tokenid').value.trim();
   if (!ethers.isAddress(from)||!ethers.isAddress(to)) { toast('Invalid address','','error'); return; }
-  const fn = safe ? 'safeTransferFrom(address,address,uint256)' : 'transferFrom';
-  await sendTx(ov => contracts.badge[fn](from, to, BigInt(tokenId), ov), 'NFT Transfer', 'Badge transferred!');
+  const fn = safe ? 'safeTransferFrom' : 'transferFrom';
+  await sendTx('badge', fn, [from, to, BigInt(tokenId)], 'NFT Transfer', 'Badge transferred!');
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -2057,31 +2104,28 @@ async function loadLeaderboard() {
 // ════════════════════════════════════════════════════════════════
 async function doTokenPause(p) {
   const sym = CHAINS[CELO_CHAIN_ID]?.tokenSymbol || 'token';
-  await sendTx(ov => p ? contracts.cball.pause(ov) : contracts.cball.unpause(ov),
-    p?'Pause '+sym:'Unpause '+sym, sym+(p?' paused.':" unpaused."));
+  await sendTx('cball', p?'pause':'unpause', [], p?'Pause '+sym:'Unpause '+sym, sym+(p?' paused.':' unpaused.'));
   refreshTokenData();
 }
 async function doMinerPause(p) {
   const mine = CHAINS[CELO_CHAIN_ID]?.minerName || 'Miner';
-  await sendTx(ov => p ? contracts.miner.pause(ov) : contracts.miner.unpause(ov),
-    p?'Pause '+mine:'Unpause '+mine, mine+(p?' paused.':" unpaused."));
+  await sendTx('miner', p?'pause':'unpause', [], p?'Pause '+mine:'Unpause '+mine, mine+(p?' paused.':' unpaused.'));
 }
 async function doBadgePause(p) {
   const badge = CHAINS[CELO_CHAIN_ID]?.badgeName || 'Badge';
-  await sendTx(ov => p ? contracts.badge.pause(ov) : contracts.badge.unpause(ov),
-    p?'Pause '+badge:'Unpause '+badge, badge+(p?' paused.':" unpaused."));
+  await sendTx('badge', p?'pause':'unpause', [], p?'Pause '+badge:'Unpause '+badge, badge+(p?' paused.':' unpaused.'));
   refreshBadgeData();
 }
 
 async function doSetMinter() {
   const a = document.getElementById('adm-setminter').value.trim();
   if (!ethers.isAddress(a)) { toast('Invalid address','','error'); return; }
-  await sendTx(ov => contracts.cball.setMinter(a, ov), 'Set Minter', 'Minter set.');
+  await sendTx('cball','setMinter',[a],'Set Minter','Minter set.');
 }
 async function doUpdateMinter() {
   const a = document.getElementById('adm-updateminter').value.trim();
   if (!ethers.isAddress(a)) { toast('Invalid address','','error'); return; }
-  await sendTx(ov => contracts.cball.updateMinter(a, ov), 'Update Minter', 'Minter updated.');
+  await sendTx('cball','updateMinter',[a],'Update Minter','Minter updated.');
 }
 
 async function doTransferOwnership(which) {
@@ -2090,59 +2134,82 @@ async function doTransferOwnership(which) {
   if (!ethers.isAddress(newOwner)) { toast('Invalid address','','error'); return; }
   const cx = { cball:contracts.cball, miner:contracts.miner, badge:contracts.badge }[which];
   if (!cx) { toast('Contract not set','','error'); return; }
-  await sendTx(ov => cx.transferOwnership(newOwner, ov), 'Transfer Ownership', 'Ownership transfer initiated.');
+  await sendTx(which,'transferOwnership',[newOwner],'Transfer Ownership','Ownership transfer initiated.');
 }
 async function doAcceptOwnership(which) {
   const cx = { cball:contracts.cball, miner:contracts.miner, badge:contracts.badge }[which];
   if (!cx) { toast('Contract not set','','error'); return; }
-  await sendTx(ov => cx.acceptOwnership(ov), 'Accept Ownership', 'Ownership accepted.');
+  await sendTx(which,'acceptOwnership',[],'Accept Ownership','Ownership accepted.');
 }
 
 async function doNftApprove() {
   const to  = document.getElementById('adm-nft-approveto').value.trim();
   const tid = document.getElementById('adm-nft-tokenid').value.trim();
   if (!ethers.isAddress(to)) { toast('Invalid address','','error'); return; }
-  await sendTx(ov => contracts.badge.approve(to, BigInt(tid), ov), 'Approve NFT', 'Approved.');
+  await sendTx('badge','approve',[to, BigInt(tid)],'Approve NFT','Approved.');
 }
 async function doSetApprovalForAll(approved) {
   const op = document.getElementById('adm-nft-operator').value.trim();
   if (!ethers.isAddress(op)) { toast('Invalid address','','error'); return; }
-  await sendTx(ov => contracts.badge.setApprovalForAll(op, approved, ov),
-    approved?'Grant All':'Revoke All', approved?'Operator approved.':'Operator revoked.');
+  await sendTx('badge','setApprovalForAll',[op, approved],approved?'Grant All':'Revoke All',approved?'Operator approved.':'Operator revoked.');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  viem clients
+// ════════════════════════════════════════════════════════════════
+
+function initViemClients() {
+  if (!window.viem || !window.ethereum) return;
+  const celoChain = viem.defineChain({
+    id: 42220,
+    name: 'Celo Mainnet',
+    nativeCurrency: { name: 'CELO', symbol: 'CELO', decimals: 18 },
+    rpcUrls: { default: { http: ['https://forno.celo.org'] } },
+    blockExplorers: { default: { name: 'Celoscan', url: 'https://celoscan.io' } },
+  });
+  viemWallet = viem.createWalletClient({
+    chain:     celoChain,
+    transport: viem.custom(window.ethereum),
+  });
+  viemPublic = viem.createPublicClient({
+    chain:     celoChain,
+    transport: viem.http('https://forno.celo.org'),
+  });
 }
 
 // ════════════════════════════════════════════════════════════════
 //  Helpers
 // ════════════════════════════════════════════════════════════════
 
-// MiniPay requires legacy (type 0) transactions — no EIP-1559 fields.
-// Per Celo docs, feeCurrency can be set to USDm for fee abstraction.
-// We always use legacy txs when inside MiniPay.
-async function getLegacyOverrides() {
-  if (!provider) return {};
-  try {
-    const feeData  = await provider.getFeeData();
-    // Use a sensible gasPrice — at least 5 gwei on Celo to be safe
-    const gasPrice = feeData.gasPrice
-      ? (feeData.gasPrice > ethers.parseUnits('5', 'gwei') ? feeData.gasPrice : ethers.parseUnits('5', 'gwei'))
-      : ethers.parseUnits('5', 'gwei');
-    return { type: 0, gasPrice };
-  } catch(e) {
-    return { type: 0, gasPrice: ethers.parseUnits('5', 'gwei') };
-  }
-}
+// sendTx uses viem walletClient.writeContract() for ALL write transactions.
+// This is required for MiniPay compatibility — ethers.js cannot handle
+// MiniPay's Custom Fee Abstraction transaction format.
+// Read-only calls still use ethers.js contracts (no change needed there).
+async function sendTx(contractKey, functionName, args, label, successMsg) {
+  if (!address)    { toast('Not connected','Connect your wallet first.','error'); return; }
+  if (!viemWallet) { toast('Wallet error','Please reconnect your wallet.','error'); return; }
 
-async function sendTx(fn, label, successMsg) {
-  if (!address) { toast('Not connected','Connect your wallet first.','error'); return; }
+  // Map contractKey to address and ABI
+  const addrMap = { cball: cfg.cball, miner: cfg.miner, badge: cfg.badge };
+  const abiMap  = { cball: CBALL_ABI_VIEM, miner: MINER_ABI_VIEM, badge: BADGE_ABI_VIEM };
+  const contractAddress = addrMap[contractKey];
+  const abi             = abiMap[contractKey];
+  if (!contractAddress) { toast('No contract','Set contract address first.','error'); return; }
+
   try {
-    // Always use legacy (type 0) txs — required by MiniPay, safe on Celo generally
-    const overrides = await getLegacyOverrides();
-    const tx = await fn(overrides);
-    toast(label + ' sent', txLink(tx.hash), 'info');
-    await tx.wait();
+    const hash = await viemWallet.writeContract({
+      address:      contractAddress,
+      abi:          abi,
+      functionName: functionName,
+      args:         args || [],
+      account:      address,
+    });
+    toast(label + ' sent', txLink(hash), 'info');
+    await viemPublic.waitForTransactionReceipt({ hash });
     toast('Success', successMsg, 'success');
   } catch(e) {
-    toast(label + ' failed', e.reason || e.message, 'error');
+    const msg = e.shortMessage || e.message || String(e);
+    toast(label + ' failed', msg, 'error');
   }
 }
 
