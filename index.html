@@ -1347,7 +1347,7 @@ const CHAINS = {
             text2:"#b89a50",text3:"#6b5520",glow:"rgba(212,170,60,0.20)" },
     minerName:"CeloMiner", tokenSymbol:"cBALL", badgeName:"CeloBadge",
     appTitle:"CeloMiner", logoEmoji:"⛏",
-    contracts:{ token:"0xc1d4d743B254379e4967294B1D54c28500b3473b", miner:"0x6bb51eb43ec5738276FCa6683b9C309066b047E0", badge:"0xDbd678c78761Fc417f891803b328cCbc00d0526F" }
+    contracts:{ token:"0xfa83D5f40425Cdb7139855b3641869D003b0E8ab", miner:"0x1f22f19a18038D9FB2b51BFb0878227f1926233f", badge:"0xc516406230FF9AdD7138808Df3948636aeAaC44c" }
   }
 };
 
@@ -2240,15 +2240,28 @@ async function sendTx(contractKey, functionName, args, label, successMsg) {
 
   try {
     const data = encodeCallData(frag, args || []);
+
+    // MiniPay requires explicit gas — it rejects transactions without it ("permission denied").
+    // We estimate via eth_estimateGas first, then add a 25% buffer.
+    let gas = '0x55730'; // 350k fallback
+    try {
+      const est = await window.ethereum.request({
+        method: 'eth_estimateGas',
+        params: [{ from: address, to: to, data: data }],
+      });
+      // Add 25% buffer and convert to hex
+      gas = '0x' + Math.ceil(parseInt(est, 16) * 1.25).toString(16);
+    } catch(_) { /* use fallback */ }
+
     const hash = await window.ethereum.request({
       method: 'eth_sendTransaction',
-      params: [{ from: address, to: to, data: data }],
+      params: [{ from: address, to: to, data: data, gas: gas }],
     });
     toast(label + ' sent', txLink(hash), 'info');
     await waitForTx(hash);
     toast('Success', successMsg, 'success');
   } catch(e) {
-    const msg = e.shortMessage || e.message || String(e);
+    const msg = e.data?.message || e.message || String(e);
     toast(label + ' failed', msg, 'error');
   }
 }
