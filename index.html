@@ -2241,17 +2241,38 @@ async function sendTx(contractKey, functionName, args, label, successMsg) {
   try {
     const data = encodeCallData(frag, args || []);
 
-    // MiniPay requires explicit gas — it rejects transactions without it ("permission denied").
-    // We estimate via eth_estimateGas first, then add a 25% buffer.
-    let gas = '0x55730'; // 350k fallback
-    try {
-      const est = await window.ethereum.request({
-        method: 'eth_estimateGas',
-        params: [{ from: address, to: to, data: data }],
-      });
-      // Add 25% buffer and convert to hex
-      gas = '0x' + Math.ceil(parseInt(est, 16) * 1.25).toString(16);
-    } catch(_) { /* use fallback */ }
+    // MiniPay does NOT support eth_estimateGas — it returns a Firebase config
+    // object instead of a gas estimate, which then leaks into error toasts.
+    // Use generous static gas limits per function instead.
+    const GAS_LIMITS = {
+      'miner.mine':              '0x55730',  // 350k — leaderboard update can be heavy
+      'miner.upgrade':           '0x30D40',  // 200k
+      'cball.transfer':          '0x186A0',  // 100k
+      'cball.approve':           '0x186A0',  // 100k
+      'cball.setMinter':         '0x186A0',  // 100k
+      'cball.updateMinter':      '0x186A0',  // 100k
+      'cball.pause':             '0x186A0',  // 100k
+      'cball.unpause':           '0x186A0',  // 100k
+      'cball.transferOwnership': '0x186A0',  // 100k
+      'cball.acceptOwnership':   '0x186A0',  // 100k
+      'miner.pause':             '0x186A0',  // 100k
+      'miner.unpause':           '0x186A0',  // 100k
+      'miner.transferOwnership': '0x186A0',  // 100k
+      'miner.acceptOwnership':   '0x186A0',  // 100k
+      'badge.claimCommon':       '0x493E0',  // 300k
+      'badge.claimRare':         '0x493E0',  // 300k
+      'badge.claimLegendary':    '0x493E0',  // 300k
+      'badge.claimGod':          '0x493E0',  // 300k
+      'badge.approve':           '0x30D40',  // 200k
+      'badge.setApprovalForAll': '0x30D40',  // 200k
+      'badge.transferFrom':      '0x30D40',  // 200k
+      'badge.safeTransferFrom':  '0x30D40',  // 200k
+      'badge.pause':             '0x186A0',  // 100k
+      'badge.unpause':           '0x186A0',  // 100k
+      'badge.transferOwnership': '0x186A0',  // 100k
+      'badge.acceptOwnership':   '0x186A0',  // 100k
+    };
+    const gas = GAS_LIMITS[fragKey] || '0x493E0'; // 300k default
 
     const hash = await window.ethereum.request({
       method: 'eth_sendTransaction',
@@ -2261,7 +2282,17 @@ async function sendTx(contractKey, functionName, args, label, successMsg) {
     await waitForTx(hash);
     toast('Success', successMsg, 'success');
   } catch(e) {
-    const msg = e.data?.message || e.message || String(e);
+    // MiniPay sometimes throws non-standard objects — extract a readable message
+    let msg = 'Transaction failed';
+    if (typeof e === 'string') {
+      msg = e;
+    } else if (e && typeof e === 'object') {
+      msg = e.message || e.reason || e.shortMessage || '';
+      // Avoid leaking Firebase/internal objects as error text
+      if (!msg || msg.length > 200 || msg.includes('Firebase')) {
+        msg = e.code ? 'Error code: ' + e.code : 'Transaction rejected';
+      }
+    }
     toast(label + ' failed', msg, 'error');
   }
 }
