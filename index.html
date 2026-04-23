@@ -1852,10 +1852,13 @@ async function doMine() {
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div>&nbsp;Mining…';
   try {
+    // Use sendTx() so the static gas limit (0x55730 / 350k) is included —
+    // MiniPay rejects eth_sendTransaction without an explicit gas field.
     const data = encodeCallData(ABI_FRAGMENTS['miner.mine'], []);
+    const gas  = '0x55730'; // 350k — matches GAS_LIMITS['miner.mine'] in sendTx
     const hash = await window.ethereum.request({
       method: 'eth_sendTransaction',
-      params: [{ from: address, to: cfg.miner, data: data }],
+      params: [{ from: address, to: cfg.miner, data: data, gas: gas }],
     });
     toast('Transaction sent', txLink(hash), 'info');
     await waitForTx(hash);
@@ -2345,165 +2348,10 @@ function toast(title, msg, type='info') {
   setTimeout(() => el?.remove(), 6000);
 }
 
-// ════════════════════════════════════════════════════════════════
-//  Mine button — pickaxe swing + ore particle burst
-// ════════════════════════════════════════════════════════════════
+// triggerMineAnimation and its DOMContentLoaded listener are defined
+// once in the <head> script above.
 
-function triggerMineAnimation(yieldAmt) {
-  const btn    = document.getElementById('mine-btn');
-  const icon   = document.getElementById('mine-btn-icon');
-  const glow   = document.getElementById('mine-btn-glow');
-  const hero   = document.getElementById('mine-tool-emoji');
-  const canvas = document.getElementById('mine-particles');
 
-  // ── Pickaxe swing ──
-  if (icon) {
-    icon.classList.remove('swinging');
-    void icon.offsetWidth; // force reflow to restart
-    icon.classList.add('swinging');
-    icon.addEventListener('animationend', () => icon.classList.remove('swinging'), { once: true });
-  }
-
-  // ── Button strike squish ──
-  if (btn) {
-    btn.classList.remove('striking');
-    void btn.offsetWidth;
-    btn.classList.add('striking');
-    btn.addEventListener('animationend', () => btn.classList.remove('striking'), { once: true });
-  }
-
-  // ── Hero emoji shake ──
-  if (hero) {
-    hero.classList.remove('shaking');
-    void hero.offsetWidth;
-    hero.classList.add('shaking');
-    hero.addEventListener('animationend', () => hero.classList.remove('shaking'), { once: true });
-  }
-
-  // ── Glow burst ──
-  if (glow) {
-    glow.classList.remove('bursting');
-    void glow.offsetWidth;
-    glow.classList.add('bursting');
-    glow.addEventListener('animationend', () => {
-      glow.classList.remove('bursting');
-    }, { once: true });
-  }
-
-  // ── Particle burst on canvas ──
-  if (!canvas) return;
-  const dpr  = window.devicePixelRatio || 1;
-  const size = 320;
-  canvas.width  = size * dpr;
-  canvas.height = size * dpr;
-  canvas.style.width  = size + 'px';
-  canvas.style.height = size + 'px';
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-
-  const cx = size / 2;
-  const cy = size / 2;
-
-  // More particles for higher yields
-  const count = Math.min(6 + (yieldAmt || 1) * 4, 28);
-
-  const particles = Array.from({ length: count }, (_, i) => {
-    const angle  = (Math.random() * Math.PI * 2);
-    const speed  = 1.8 + Math.random() * 3.5;
-    const radius = 3 + Math.random() * 5;
-    // Mix of gold coins (circle) and ore chips (square)
-    const type   = Math.random() < 0.6 ? 'coin' : 'chip';
-    const gold   = ['#ffd700','#f0cc60','#e8b830','#ffec80','#d4aa3c'];
-    const color  = gold[Math.floor(Math.random() * gold.length)];
-    return {
-      x: cx, y: cy,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 1.5, // slight upward bias
-      alpha: 1,
-      radius,
-      color,
-      type,
-      rot: Math.random() * Math.PI * 2,
-      rotV: (Math.random() - 0.5) * 0.3,
-      gravity: 0.12 + Math.random() * 0.08,
-    };
-  });
-
-  let frame;
-  const tick = () => {
-    ctx.clearRect(0, 0, size, size);
-    let alive = false;
-    for (const p of particles) {
-      p.x  += p.vx;
-      p.y  += p.vy;
-      p.vy += p.gravity;
-      p.vx *= 0.97;
-      p.alpha -= 0.022;
-      p.rot += p.rotV;
-      if (p.alpha <= 0) continue;
-      alive = true;
-      ctx.save();
-      ctx.globalAlpha = p.alpha;
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot);
-      if (p.type === 'coin') {
-        // Glowing gold coin
-        ctx.beginPath();
-        ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = '#ffd700';
-        ctx.shadowBlur  = 8;
-        ctx.fill();
-        // Inner highlight
-        ctx.beginPath();
-        ctx.arc(-p.radius * 0.25, -p.radius * 0.25, p.radius * 0.4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.35)';
-        ctx.shadowBlur = 0;
-        ctx.fill();
-        // cBALL text on bigger coins
-        if (p.radius > 6) {
-          ctx.font = `bold ${Math.floor(p.radius * 0.75)}px Rajdhani, sans-serif`;
-          ctx.fillStyle = 'rgba(80,50,0,0.8)';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.shadowBlur = 0;
-          ctx.fillText('c', 0, 0);
-        }
-      } else {
-        // Ore chip — rotated rectangle
-        const w = p.radius * 1.6;
-        const h = p.radius * 0.9;
-        ctx.beginPath();
-        ctx.rect(-w/2, -h/2, w, h);
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = '#ffd700';
-        ctx.shadowBlur  = 4;
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-    if (alive) {
-      frame = requestAnimationFrame(tick);
-    } else {
-      ctx.clearRect(0, 0, size, size);
-    }
-  };
-  if (frame) cancelAnimationFrame(frame);
-  tick();
-}
-
-// Immediate visual feedback on mousedown (before tx)
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('mine-btn');
-  if (btn) {
-    btn.addEventListener('mousedown', () => {
-      if (!btn.disabled) triggerMineAnimation(0);
-    });
-    btn.addEventListener('touchstart', () => {
-      if (!btn.disabled) triggerMineAnimation(0);
-    }, { passive: true });
-  }
-});
 
 
 </script>
